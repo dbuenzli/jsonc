@@ -13,7 +13,7 @@ on [js_of_ocaml][2] and uses the browsers' builtin JSON codecs.
 Jsont and its backends depend on [Jsonm][1] and [js_of_ocaml][2]. They
 are distributed under the BSD3 license.
 
-Home page: http://erratique.ch/software/jsont
+Home page: http://erratique.ch/software/jsont  
 Contact: Daniel Bünzli `<daniel.buenzl i@erratique.ch>`
 
 [1]: http://erratique.ch/software/jsonm
