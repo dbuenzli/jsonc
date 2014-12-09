@@ -1,0 +1,28 @@
+description = "JSON data description and codecs"
+version = "%%VERSION%%"
+
+# Backends
+
+package "jsonm" (
+  directory="jsonm"
+  description = "JSON data description and Jsonm codec"
+  version = "%%VERSION%%"
+  requires = "jsonm"
+  archive(byte) = "jsont_jsonm.cma"
+  archive(byte, plugin) = "jsont_jsonm.cma"
+  archive(native) = "jsont_jsonm.cmxa"
+  archive(native, plugin) = "jsont_jsonm.cmxs"
+  exists_if = "jsont_jsonm.cma"
+)
+
+package "jsoo" (
+  directory="jsoo"
+  description = "JSON data description and js_of_ocaml codec"
+  version = "%%VERSION%%"
+  requires = "js_of_ocaml"
+  archive(byte) = "jsont_jsoo.cma"
+  archive(byte, plugin) = "jsont_jsoo.cma"
+  archive(native) = "jsont_jsoo.cmxa"
+  archive(native, plugin) = "jsont_jsoo.cmxs"
+  exists_if = "jsont_jsoo.cma"
+)

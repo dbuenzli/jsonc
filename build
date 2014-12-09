@@ -1,0 +1,43 @@
+#!/bin/sh
+# This script is only used for developement. It is removed by the
+# distribution process.
+
+set -e
+
+OCAMLBUILD=${OCAMLBUILD:="ocamlbuild -tag debug -classic-display \
+                          -use-ocamlfind \
+                          -plugin-tag package(js_of_ocaml.ocamlbuild)"}
+
+action ()
+{
+    case $1 in
+      default)      action jsonm jsoo ;;
+      doc)          shift; pkg-doc $* -I src-jsonm -I src-jsoo \
+                    doc/dev-api.docdir ;;
+      api-doc)      shift; pkg-doc $* -I src-jsonm -I src-jsoo doc/api.docdir ;;
+      jsonm)        $OCAMLBUILD -I src-jsonm \
+                                jsont_jsonm.cma jsont_jsonm.cmxa
+                    ;;
+      jsoo)
+                    $OCAMLBUILD -I src-jsoo \
+                                jsont_jsoo.cma jsont_jsoo.cmxa
+                    ;;
+      test-jsonm)   $OCAMLBUILD -I src-jsonm -I test-jsonm \
+                                test-jsonm.otarget
+                    ;;
+      test-jsoo)    $OCAMLBUILD -I src-jsoo -I test-jsoo \
+                                test-jsoo.otarget
+                    ;;
+
+      browser)      action test-jsoo
+                    shift
+                    reload-browser "http://`hostname`/jsont/test-jsoo/$1.html"
+                    ;;
+      clean)        $OCAMLBUILD -clean ;;
+      *)            $OCAMLBUILD $* ;;
+    esac
+}
+
+if [ $# -eq 0 ];
+then action default ;
+else action $*; fi

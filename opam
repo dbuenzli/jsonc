@@ -1,0 +1,20 @@
+opam-version: "1.2"
+maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
+authors: ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
+homepage: "http://erratique.ch/software/jsont"
+doc: "http://erratique.ch/software/jsont"
+dev-repo: "http://erratique.ch/repos/jsont.git"
+bug-reports: "https://github.com/dbuenzli/jsont/issues"
+tags: [ "json" "codec" "javascript" "schema" "org:erratique" ]
+license: "BSD3"
+available: [ ocaml-version >= "4.01.0"]
+depends: [ "ocamlfind" ]
+depopts: [ "jsonm" "js_of_ocaml" ]
+build: 
+[
+  [ "ocaml" "pkg/git.ml" ]
+  [ "ocaml" "pkg/build.ml" "native=%{ocaml-native}%"
+                           "native-dynlink=%{ocaml-native-dynlink}%"
+                           "jsonm=%{jsonm:installed}%"
+                           "jsoo=%{js_of_ocaml:installed}%" ]
+]

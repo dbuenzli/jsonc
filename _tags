@@ -1,0 +1,13 @@
+<**/*.{ml,mli}> : bin_annot, annot, debug
+
+#<{src,test}-jsoo> : include
+#<{src,test}-jsonm> : include
+
+<{src,test}-jsonm/*> : package(jsonm)
+<{src,test}-jsoo/*> : package(js_of_ocaml), syntax(camlp4o), \
+               package(js_of_ocaml.syntax)
+
+#<test-jsonm> : include
+#<test-jsoo> : include
+<test-jsonm/*> : jsont_jsonm
+<test-jsoo/*> : jsont_jsoo

@@ -1,0 +1,9 @@
+EXT js
+PKG jsonm js_of_ocaml
+S src
+S src-jsonm
+S src-jsoo
+S test
+S test-jsoo
+S test-jsonm
+B _build/**
