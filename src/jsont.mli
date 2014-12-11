@@ -51,6 +51,12 @@ val is_invalid_loc : loc -> bool
 type nat_string = Jsont_codec.nat_string
 (** The type for native strings. *)
 
+val nat_string_of_string : string -> nat_string
+(** [nat_string_of_string s] is a native string from the OCaml string [s]. *)
+
+val nat_string_to_string : nat_string -> string
+(** [nat_string_to_string s] is an OCaml string from the native string [s]. *)
+
 type soup = Jsont_codec.soup
 (** The type for arbitrary undescribed JSON values. *)
 

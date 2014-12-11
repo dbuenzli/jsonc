@@ -77,6 +77,10 @@ let jobj_raw_copy (o : < > Js.t) : < > Js.t = (* assumes no prototype tricks *)
 (* JSON values *)
 
 type nat_string = Js.js_string Js.t
+
+let nat_string_of_string = Jsont_codec.nat_string_of_string
+let nat_string_to_string = Jsont_codec.nat_string_to_string
+
 type soup = < > Js.t
 
 (* JSON object values

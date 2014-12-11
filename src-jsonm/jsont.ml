@@ -52,6 +52,10 @@ let loc_merge (s, _) (_, e) = (s, e)
 (* JSON values *)
 
 type nat_string = string
+
+let nat_string_of_string s = s
+let nat_string_to_string s = s
+
 type soup = Jsonm.lexeme def list
 
 module Id = struct        (* uids for object description and object members. *)
