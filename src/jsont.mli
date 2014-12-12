@@ -46,6 +46,12 @@ val invalid_loc : loc
 val is_invalid_loc : loc -> bool
 (** [is_invalid_loc l] is [true] iff [l] is {!invalid_loc}. *)
 
+val invalid_def : 'a -> 'a def
+(** [invalid_def v] is [(invalid_loc, v)] *)
+
+val undef : 'a def -> 'a
+(** [undef v] is [snd v]. *)
+
 (** {1:json_values JSON values} *)
 
 type nat_string = Jsont_codec.nat_string

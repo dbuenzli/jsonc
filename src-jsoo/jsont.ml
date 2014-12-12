@@ -54,6 +54,7 @@ type 'a def = loc * 'a
 let invalid_loc = (-1, 0), (-1, 0)
 let is_invalid_loc l = l = invalid_loc
 let invalid_def v = invalid_loc, v
+let undef (_, v) = v
 
 (* JavaScript helpers *)
 
