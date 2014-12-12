@@ -95,16 +95,16 @@ val log_results : unit -> bool
 (** {1 Codec} *)
 
 val ok_trip : ?loc:bool -> ?dups:[ `Error | `Skip ] ->
-  ?unknown:[ `Error | `Skip ] -> 'a Jsont.descr -> string -> 'a
+  ?unknown:[ `Error | `Skip ] -> 'a Jsont.codec -> string -> 'a
 
 val ok_decode : ?loc:bool -> ?dups:[ `Error | `Skip ] ->
-  ?unknown:[ `Error | `Skip ] -> 'a Jsont.descr -> string -> 'a
+  ?unknown:[ `Error | `Skip ] -> 'a Jsont.codec -> string -> 'a
 
 val err_decode : ?loc:bool -> ?dups:[ `Error | `Skip ] ->
-  ?unknown:[ `Error | `Skip ] -> 'a Jsont.descr -> Jsont.error -> string -> 'a
+  ?unknown:[ `Error | `Skip ] -> 'a Jsont.codec -> Jsont.error -> string -> 'a
 
 val err_trip : ?loc:bool -> ?dups:[ `Error | `Skip ] ->
-  ?unknown:[ `Error | `Skip ] -> 'a Jsont.descr -> Jsont.error -> string -> 'a
+  ?unknown:[ `Error | `Skip ] -> 'a Jsont.codec -> Jsont.error -> string -> 'a
 
 (** {1 Asserting} *)
 

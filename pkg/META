@@ -1,11 +1,11 @@
-description = "JSON data description and codecs"
+description = "JSON data structure codecs"
 version = "%%VERSION%%"
 
 # Backends
 
 package "jsonm" (
   directory="jsonm"
-  description = "JSON data description and Jsonm codec"
+  description = "JSON data structure codecs with Jsonm"
   version = "%%VERSION%%"
   requires = "jsonm"
   archive(byte) = "jsont_jsonm.cma"
@@ -17,7 +17,7 @@ package "jsonm" (
 
 package "jsoo" (
   directory="jsoo"
-  description = "JSON data description and js_of_ocaml codec"
+  description = "JSON data structure codecs with js_of_ocaml"
   version = "%%VERSION%%"
   requires = "js_of_ocaml"
   archive(byte) = "jsont_jsoo.cma"

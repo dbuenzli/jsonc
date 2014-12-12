@@ -110,16 +110,16 @@ let unexpected_decode_error (file_loc, e) =
   let loc = Printexc.get_callstack 3 in
   log_fail loc "unexpected decode error: %s" (Jsont.error_to_string e)
 
-let trip ?loc ?dups ?unknown descr v =
+let trip ?loc ?dups ?unknown codec v =
   let nat_e, flush, get_data = Testing_backend.encoder () in
-  let e = Jsont.encoder nat_e descr v in
+  let e = Jsont.encoder nat_e codec v in
   let rec encode () = match Jsont.encode e with
   | `Partial -> flush (); encode ()
   | `Ok -> ()
   in
   let data = (encode (); get_data nat_e) in
   let d, refill = Testing_backend.decoder data in
-  let d = Jsont.decoder ?loc ?dups ?unknown d descr in
+  let d = Jsont.decoder ?loc ?dups ?unknown d codec in
   let rec decode () = match Jsont.decode d with
   | `Await -> refill (); decode ()
   | `Error e -> decode ()
@@ -127,9 +127,9 @@ let trip ?loc ?dups ?unknown descr v =
   in
   decode ()
 
-let ok_decode ?loc ?dups ?unknown descr data =
+let ok_decode ?loc ?dups ?unknown codec data =
   let d, refill = Testing_backend.decoder data in
-  let d = Jsont.decoder ?loc ?dups ?unknown d descr in
+  let d = Jsont.decoder ?loc ?dups ?unknown d codec in
   let rec decode () = match Jsont.decode d with
   | `Await -> refill (); decode ()
   | `Error e -> unexpected_decode_error e; decode ()
@@ -137,14 +137,14 @@ let ok_decode ?loc ?dups ?unknown descr data =
   in
   decode ()
 
-let ok_trip ?loc ?dups ?unknown descr data =
-  trip ?loc ?dups ?unknown descr (ok_decode ?loc ?dups ?unknown descr data)
+let ok_trip ?loc ?dups ?unknown codec data =
+  trip ?loc ?dups ?unknown codec (ok_decode ?loc ?dups ?unknown codec data)
 
-let err_decode ?loc ?dups ?unknown descr err data =
+let err_decode ?loc ?dups ?unknown codec err data =
   incr assert_count;
   let cs_loc = Printexc.get_callstack 3 in
   let d, refill = Testing_backend.decoder data in
-  let d = Jsont.decoder ?loc ?dups ?unknown d descr in
+  let d = Jsont.decoder ?loc ?dups ?unknown d codec in
   let err = ref (Some err) in
   let rec decode () = match Jsont.decode d with
   | `Await -> refill (); decode ()
@@ -168,8 +168,8 @@ let err_decode ?loc ?dups ?unknown descr err data =
         (Jsont.error_to_string e);
       v
 
-let err_trip ?loc ?dups ?unknown descr err data =
-  trip ?loc ?dups ?unknown descr (err_decode ?loc ?dups ?unknown descr err data)
+let err_trip ?loc ?dups ?unknown codec err data =
+  trip ?loc ?dups ?unknown codec (err_decode ?loc ?dups ?unknown codec err data)
 
 (* Asserting *)
 

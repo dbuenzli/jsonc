@@ -4,10 +4,10 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-(** JSON data description and codecs.
+(** JSON data structure codecs.
 
     [Jsont] describes JSON data structures with
-    {{!base_descr}combinators}. The resulting typed descriptions
+    {{!base_codec}codec combinators}. The resulting typed descriptions
     enable JSON backend codecs to {{!enc}encode} and {{!dec}decode}
     these structures from/to OCaml values.
 
@@ -17,10 +17,10 @@
 
 (** {1:value_codecs Value codecs}
 
-    Value codec allow to refine JSON value descriptions to more
-    appopriate OCaml types and hook into [Jsont]'s error reporting
-    mecanism. This allows, for example, to parse a JSON string value
-    into an URI, a JSON object into a record, etc.  *)
+    Value codec allow to refine JSON value codecs to more appopriate
+    OCaml types and hook into [Jsont]'s error reporting mecanism. This
+    allows, for example, to parse a JSON string value into an URI, a
+    JSON object into a record, etc.  *)
 
 type ('a, 'b) value_decoder = 'a -> [ `Ok of 'b | `Error of string ]
 (** The type for value decoders.  *)
@@ -63,169 +63,168 @@ type soup = Jsont_codec.soup
 type obj
 (** The type for JSON object values. Values of this type represent a
     concrete JSON object that conforms to a particular
-    {{!type:objd}object description}. See the functions in
+    {{!type:objc}object codec}. See the functions in
     {!object_values} for using values of this type. *)
 
-(** {1:base_descr JSON base value descriptions} *)
+(** {1:base_codec JSON base value codecs} *)
 
-type 'a descr
-(** The type for JSON value descriptions. A value of this type
+type 'a codec
+(** The type for JSON value codecs. A value of this type
     describes a JSON value structure and knows how to codec it to an
     OCaml value of type ['a].
 
-    All value descriptions have a {!default} value of type ['a]. This
+    All value codecs have a {!default} value of type ['a]. This
     value is used either as a placeholder in case of error during
     robust parsing or as a default value during {{!new_obj}object creation}. *)
 
-val default : 'a descr -> 'a
-(** [default d] is [d]'s default value. *)
+val default : 'a codec -> 'a
+(** [default c] is [c]'s default value. *)
 
-val with_default : 'a -> 'a descr -> 'a descr
-(** [with_default v d] is [d] with default value [v]. *)
+val with_default : 'a -> 'a codec -> 'a codec
+(** [with_default v c] is [c] with default value [v]. *)
 
-val bool : bool descr
+val bool : bool codec
 (** [bool] is a JSON boolean. [true] is its default value. *)
 
-val float : float descr
+val float : float codec
 (** [float] is a JSON number. [0.] is its default value. *)
 
-val int : int descr
+val int : int codec
 (** [int] is a JSON number as an integer. [0] is its default value. Any
     existing fractional part is truncated, see also {!int_strict}. *)
 
-val int_strict : int descr
+val int_strict : int codec
 (** [int_strict] is like {!int} but errors on a JSON number with a
     fractional part. *)
 
-val string : string descr
+val string : string codec
 (** [string] is a JSON string. [""] is its default value. *)
 
-val nat_string : nat_string descr
+val nat_string : nat_string codec
 (** [nat_string] is like {!string} but the OCaml representation is a
     backend native string value. The empty native string is its default
     value. *)
 
-val nullable : 'a descr -> 'a option descr
-(** [nullable d] is either the JSON value [d] or JSON null. [Some (default d)]
+val nullable : 'a codec -> 'a option codec
+(** [nullable c] is either the JSON value [c] or JSON null. [Some (default d)]
     is its default value. *)
 
-val codec : ?default:'b -> ('a, 'b) value_codec -> 'a descr -> 'b descr
-(** [codec c d] is the JSON value [d] whose OCaml representation is
-    transformed by [c].
+val view : ?default:'b -> ('a, 'b) value_codec -> 'a codec -> 'b codec
+(** [view view c] is the JSON value [c] whose OCaml representation is
+    transformed by value codec [view].
 
-    @raise Invalid_argument if [default] is absent and [d]'s default value
-    cannot be parsed by [codec]. *)
+    @raise Invalid_argument if [default] is absent and [c]'s default value
+    cannot be parsed by [view]. *)
 
 val type_match : default:'a ->
   ([ `Null | `Bool | `Float | `String | `Object | `Array ] ->
-   [`Ok of 'a descr | `Error of string ]) ->
-  ('a -> 'a descr) -> 'a descr
-(** [type_match default decd encd] is a JSON value described by:
+   [`Ok of 'a codec | `Error of string ]) ->
+  ('a -> 'a codec) -> 'a codec
+(** [type_match default dec enc] is a JSON value codec by:
     {ul
-    {- On decoding: [decd typ] where [typ] is determined according
+    {- On decoding: [dec typ] where [typ] is determined according
        to the type found in the data. If [`Error] is returned on a given
        data type the error will be returned by the decoder.
        If [`Ok d] is, [d] is used to decode the value. You
        must make sure that [d] does actually describe the given datatype
        (i.e. it would be wrong to return {!Jsont.int} on [`Bool]).}
-    {- On encoding: [encd v] where [v] is the member value.}}
+    {- On encoding: [enc v] where [v] is the member value.}}
     [default] is its default value. *)
 
-val soup : soup descr
+val soup : soup codec
 (** [soup] is any JSON value. JSON's null is its default value. *)
 
-val some : 'a descr -> 'a option descr
-(** [some d] is the JSON value [d] but wrapped by [Some]. Its
+val some : 'a codec -> 'a option codec
+(** [some c] is the JSON value [c] but wrapped by [Some]. Its
     default value is [None].
 
     {b Warning.} [None] cannot be encoded with this combinator, it
     will raise [Invalid_argument], use {!nullable} for encoding an
-    option. The result of [some d] is to be given to {!mem} with
+    option. The result of [some c] is to be given to {!mem} with
     [~opt:`Yes_rem]. *)
 
-(** {1:array_descr JSON array descriptions} *)
+(** {1:array_codec JSON array codecs} *)
 
-val array : 'a descr -> 'a list descr
+val array : 'a codec -> 'a list codec
 (** [array elt] is a JSON array whose elements are JSON values
     [elt]. [[]] is its default value. *)
 
-val array_array : 'a descr -> 'a array descr
+val array_array : 'a codec -> 'a array codec
 (** [array_array] is like {!array} but the OCaml representation is an
     array. [[||]] is its default value. *)
 
-(** {1:obj_descr JSON object descriptions} *)
+(** {1:obj_codec JSON object codec} *)
 
-type objd
-(** The type for JSON object descriptions. *)
+type objc
+(** The type for JSON object codecs. *)
 
 type 'a mem
-(** The type for the JSON object member descriptions. The type ['a] is
+(** The type for the JSON object member codecs. The type ['a] is
     the OCaml value used to represent the member JSON value. A value
-    of this type always tied to a particular {{!objd}object
-    description}. *)
+    of this type always tied to a particular {{!objc}object codec}. *)
 
 type 'a anon
-(** The type for anonymous JSON object member descriptions. The type
+(** The type for anonymous JSON object member codecs. The type
     ['a] is the OCaml value used to represent all the unknown
     member JSON values of an object. A value of this type always tied
-    to a particular {{!objd}object description}. *)
+    to a particular {{!objc}object codec}. *)
 
-val objd : ?kind:string -> unit -> objd
-(** [objd kind ()] is a new object description. [kind] can be used to
+val objc : ?kind:string -> unit -> objc
+(** [objc kind ()] is a new object codec. [kind] can be used to
     give a name the to kind of object described (for error
     messages). *)
 
 val mem :
   ?eq:('a -> 'a -> bool) ->
-  ?opt:[`Yes | `Yes_rem | `No] -> objd -> string -> 'a descr -> 'a mem
-(** [mem opt o name d] declares in [o] an object member named [name]
-    with JSON value [d]. If [opt] is
+  ?opt:[`Yes | `Yes_rem | `No] -> objc -> string -> 'a codec -> 'a mem
+(** [mem opt o name c] declares in [o] an object member named [name]
+    with JSON value [c]. If [opt] is
     {ul
     {- [`No] (default), it is a decoding error if the member is missing
        from the object.}
     {- [`Yes], the member can be absent on decoding in which case it will
-       take [d]'s default value.}
+       take [c]'s default value.}
     {- [`Yes_rem], the member can be absent on decoding in which case it will
-       take [d]'s default value. If on encoding the member value is
-       equal to [d]'s default value as determined by [eq]
+       take [c]'s default value. If on encoding the member value is
+       equal to [c]'s default value as determined by [eq]
        (defaults to [=]), the member will not be encoded in the output.}}
 
     @raise Invalid_argument if [name] is already described in [o]
-    or if [o] was already {{!obj}described}. *)
+    or if [o]'s codec was already {{!obj}used}. *)
 
 val mem_match :
   ?eq:('b -> 'b -> bool) ->
   ?opt:[ `No | `Yes | `Yes_rem] ->
-  objd -> 'a mem -> string -> ('a -> 'b descr) -> 'b mem
+  objc -> 'a mem -> string -> ('a -> 'b codec) -> 'b mem
 (** [mem_match opt o m name select] is like {!mem}, except its value at encoding
     and decoding time is determined by [select v] where [v] is the value
-    of the member [m] in the JSON object. It's default is the default of
-    the description resulting from applying [m]'s default to [select]. *)
+    of the member [m] in the JSON object. Its default is the default of
+    the codec resulting from applying [m]'s default to [select]. *)
 
 
-val anon : ?default:(string * 'a) list -> objd -> 'a descr -> 'a anon
-(** [anon o d] declares that all unknown object members of [o]
-    have a JSON value [d].
+val anon : ?default:(string * 'a) list -> objc -> 'a codec -> 'a anon
+(** [anon o c] declares that all unknown object members of [o]
+    have a JSON value [c].
 
     @raise Invalid_argument if [o] already has an anonymous member
-    description or if [o] was already {{!obj}described}. *)
+    description or if [o]'s codec was already {{!obj}used}. *)
 
-val obj : objd -> obj descr
-(** [obj o] is a description for a JSON object described by [o]. An
+val obj : objc -> obj codec
+(** [obj o] is a codec for a JSON object described by [o]. An
     object with the defaults of [o]'s members is the default value.
 
-    {b Warning.} Once [o] has been described using [obj] it is no
-    longer possible to modify the object description [o] using
-    {!anon} or {!mem} and its derivatives.  *)
+    {b Warning.} Once [o] has been used using [obj] it is no longer
+    possible to modify the object codec [o] using {!anon} or {!mem}
+    and its derivatives.  *)
 
 (** {1:object_values JSON object value}
 
     {b Warning.} All the functions below when used on a JSON object
-    value that is not derived from the descriptions used to access
-    them raise [Invalid_argument]. An object is derived from a
-    description either if it was created with the
-    {{!new_obj}description} or if it was
-    {{!dec}decoded} using that description. *)
+    value that is not derived from the object codec used to access
+    them raise [Invalid_argument]. An object is derived from an
+    object codec either if it was created with the
+    {{!new_obj}codec} or if it was
+    {{!dec}decoded} using that codec. *)
 
 type memv
 (** The type for a member and its value. *)
@@ -237,9 +236,9 @@ val anonv : 'a anon -> string -> 'a -> memv
 (** [anonv a name v] is an [a] anonymous member named [name] with value
     [v]. *)
 
-val new_obj : obj descr -> memv list -> obj
-(** [new_obj d memvs] is a new object described by [d] with
-    members [memvs]. Unspecified members default to the defaults of [d]. *)
+val new_obj : obj codec -> memv list -> obj
+(** [new_obj c memvs] is a new object described by [c] with
+    members [memvs]. Unspecified members default to the defaults of [c]. *)
 
 val get : 'a mem -> obj -> 'a
 (** [get m o] is [o]'s [m] member value. *)
@@ -294,7 +293,7 @@ type 'a decoder
 (** The type for decoders. The type ['a] is the resulting OCaml type decoded. *)
 
 val decoder : ?loc:bool -> ?dups:[`Skip | `Error] ->
-  ?unknown:[`Skip | `Error] -> Jsont_codec.decoder -> 'a descr -> 'a decoder
+  ?unknown:[`Skip | `Error] -> Jsont_codec.decoder -> 'a codec -> 'a decoder
 (** [decoder unsafe loc mem_dups d v] is a decoder for a value described
     [v] using the backend decoder [d]. The following optional may not
     be available in all backends:
@@ -313,7 +312,7 @@ val decode : 'a decoder -> [ `Await | `Error of error def | `Ok of 'a def]
     {- [`Error e] if an error occured. If the client is interested in
        a best-effort decoding it can still continue to decode.}
     {- [`Ok v] when the end of input was reached and the value is decoded.
-       In case of error this value may be partially defined by description
+       In case of error this value may be partially defined by codec
        default values.}}
 
     {b Note.} Repeated invocation always eventually return [`Ok] even
@@ -328,9 +327,9 @@ val decoder_decoder : 'a decoder -> Jsont_codec.decoder
 type encoder
 (** The type for encoders. *)
 
-val encoder : Jsont_codec.encoder -> 'a descr -> 'a -> encoder
-(** [encoder e value v] is an encoder that encodes [v] as described by
-    [value] using the native encoder [e]. *)
+val encoder : Jsont_codec.encoder -> 'a codec -> 'a -> encoder
+(** [encoder e c v] is an encoder that encodes [v] as described by
+    [c] using the native encoder [e]. *)
 
 val encode : encoder -> [ `Partial | `Ok ]
 (** [encode e] encodes the value in [e] returns

@@ -9,7 +9,7 @@
 
 module Location : sig
   type t
-  val descr : t Jsont.descr
+  val codec : t Jsont.codec
   val create : Jsont.nat_string -> (float * float) -> t
   val description : t -> Jsont.nat_string
   val coordinates : t -> float * float
@@ -20,26 +20,26 @@ end = struct
   (* We could introduce another ADT like we do for location for coords
      but we choose here to model it as a pair of float. *)
   let coordinates =
-    let objd = Jsont.objd ~kind:"coords" () in
+    let objd = Jsont.objc ~kind:"coords" () in
     let mem_lat = Jsont.mem objd "latitude" Jsont.float in
     let mem_lon = Jsont.mem objd "longitude" Jsont.float in
-    let descr = Jsont.obj objd in
-    let codec =
+    let codec = Jsont.obj objd in
+    let view =
       let decode o = `Ok (Jsont.get mem_lat o, Jsont.get mem_lon o) in
       let encode (lat, lon) =
-        Jsont.(new_obj descr [memv mem_lat lat; memv mem_lon lon])
+        Jsont.(new_obj codec [memv mem_lat lat; memv mem_lon lon])
       in
       decode, encode
     in
-    Jsont.codec codec descr
+    Jsont.view view codec
 
-  let objd = Jsont.objd ~kind:"loc" ()
+  let objd = Jsont.objc ~kind:"loc" ()
   let mem_description = Jsont.mem objd "description" Jsont.nat_string
   let mem_coordinates = Jsont.mem objd "coordinates" coordinates
-  let descr = Jsont.obj objd
+  let codec = Jsont.obj objd
 
   let create description coords =
-    Jsont.(new_obj descr [ memv mem_description description;
+    Jsont.(new_obj codec [ memv mem_description description;
                            memv mem_coordinates coords; ])
 
   let description = Jsont.get mem_description
@@ -64,8 +64,8 @@ let assert_location l d x y =
 
 let test_trip () =
   log_test "Trip location";
-  assert_location (ok_trip Location.descr data0) "Somewhere" 42. 6.;
-  assert_location (err_decode Location.descr
+  assert_location (ok_trip Location.codec data0) "Somewhere" 42. 6.;
+  assert_location (err_decode Location.codec
                      (`Type ("null", "float")) data1) "Somewhere" 0. 6.;
   ()
 

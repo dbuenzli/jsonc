@@ -1,14 +1,14 @@
-Jsont — JSON data description and codecs for OCaml
+Jsont — JSON data structure codecs for OCaml
 -------------------------------------------------------------------------------
 Release %%VERSION%%
 
-Jsont describes JSON data structures in OCaml with combinators. The
-resulting typed descriptions enable backend JSON codecs to encode and
-decode these structures from/to OCaml values.
+Jsont describes JSON data structures in OCaml with codec
+combinators. The resulting typed descriptions enable backend JSON
+codecs to encode and decode these structures from/to OCaml values.
 
-Jsont's descriptions can be used with different backends. The library
-comes with a [Jsonm][1] backend and a JavaScript backend that depends
-on [js_of_ocaml][2] and uses the browsers' builtin JSON codecs.
+Jsont's codecs can be used with different backends. The library comes
+with a [Jsonm][1] backend and a JavaScript backend that depends on
+[js_of_ocaml][2] and uses the browsers' builtin JSON codecs.
 
 Jsont and its backends depend on [Jsonm][1] and [js_of_ocaml][2]. They
 are distributed under the BSD3 license.
@@ -44,7 +44,7 @@ distribution.
 
 ## Sample programs
 
-If you installed Fut with `opam` sample programs are located in
+If you installed Jsont with `opam` sample programs are located in
 the directory `opam config var jsont:doc`.
 
 In the distribution sample programs are located in the `test`

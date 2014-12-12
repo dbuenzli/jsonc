@@ -21,21 +21,23 @@ let str = Printf.sprintf
 
 let err_conv_default msg = str "could not convert default value (%s)" msg
 
-let err_objd_dup_mem k n =
-  str "object description %s: duplicate description for member %s" k n
+let err_objc_dup_mem k n =
+  str "object codec %s: duplicate description for member %s" k n
 
-let err_objd_dup_anon k =
-  str "object description %s: duplicate description for anonymous members" k
+let err_objc_dup_anon k =
+  str "object codec %s: duplicate description for anonymous members" k
 
-let err_objd_used k =
-  str "object description %s: description already in use" k
+let err_objc_used k =
+  str "object codec %s: description already in use" k
 
 let err_some_combinator =
   str "Jsont.some misuse: cannot be used to encode None"
 
-let err_oid = str "object not described by description"
-let err_mem_oid n = str "object not described by description of member %s" n
-let err_anon_oid = str "object not described by description of anonymous member"
+let err_oid = str "object not described by codec"
+let err_mem_oid n = str "object not described by object codec of member %s" n
+let err_anon_oid =
+  str "object not described by object codec of anonymous member"
+
 let err_anon_mem n = str "no anonymous member named %s" n
 
 (* Value codecs *)
@@ -88,11 +90,11 @@ type soup = < > Js.t
    A Jsont decoded/created JSON object value is represented by an object with
    three fields
 
-   - [oid] holds the object description id.
+   - [oid] holds the object codec id.
    - [mems] holds an object that maps described member names to their value.
    - [anons] holds an object that maps unknown member names to their value. *)
 
-module Id = struct                          (* uids for object descriptions. *)
+module Id = struct                                (* uids for object codecs. *)
   type t = int
   let nil = -1
   let create = let count = ref nil in fun () -> incr count; !count
@@ -164,7 +166,7 @@ let obj_copy o =
   Js.Unsafe.set copy anons_key anons;
   copy
 
-(* JSON codecs and value description types *)
+(* JSON codecs and value codec types *)
 
 type error =
   [ `Json_decoder of Jsont_codec.error
@@ -198,37 +200,37 @@ and encoder =
     mutable enc_ctx : obj list;          (* currently encoded object stack. *)
     mutable enc_k : encoder -> encode }           (* encoding kontinuation. *)
 
-and 'a descr =                                   (* JSON value description. *)
+and 'a codec =                                         (* JSON value codec. *)
   { default : 'a;                                         (* default value. *)
     decode :                                              (* value decoder. *)
-      'b. 'a descr -> < > Js.t -> ('a -> 'b decoder -> 'b decode) ->
+      'b. 'a codec -> < > Js.t -> ('a -> 'b decoder -> 'b decode) ->
           'b decoder -> 'b decode;
     encode :                                              (* value encoder. *)
-      'a descr -> 'a -> (< > Js.t -> encoder -> encode) -> encoder -> encode  }
+      'a codec -> 'a -> (< > Js.t -> encoder -> encode) -> encoder -> encode  }
 
-type 'a mem =                                   (* JSON member description. *)
-  { mem_oid : int;                                (* object description id. *)
+type 'a mem =                                         (* JSON member codec. *)
+  { mem_oid : int;                                      (* object codec id. *)
     mem_name : Js.js_string Js.t;                           (* member name. *)
     mem_opt :                                        (* optional behaviour. *)
       [ `Yes | `Yes_rem of 'a -> 'a -> bool | `No ];
-    mem_descr : 'a descr }                     (* member value description. *)
+    mem_codec : 'a codec }                           (* member value codec. *)
 
 and mem_exists = Me : 'a mem -> mem_exists        (* hides mem's parameter. *)
 
-type 'a anon =                          (* Unknown JSON member description. *)
-  { anon_oid : int;                               (* object description id. *)
+type 'a anon =                                (* Unknown JSON member codec. *)
+  { anon_oid : int;                                     (* object codec id. *)
     anon_default : (string * 'a) list;             (* default anon members. *)
-    anon_descr : 'a descr; }                         (* value descripition. *)
+    anon_codec : 'a codec; }                                (* value codec. *)
 
 type anon_exists = Ae : 'a anon -> anon_exists   (* hides anon's parameter. *)
 
-type objd =                                     (* JSON object descriptions. *)
-  { objd_id : int;                                 (* object description id. *)
-    objd_kind : string;                (* a name for the object description. *)
-    mutable objd_used : bool;           (* [true] when description was used. *)
-    mutable objd_mems :                       (* object member descriptions. *)
+type objc =                                           (* JSON object codec. *)
+  { objc_id : int;                                      (* object codec id. *)
+    objc_kind : string;                     (* a name for the object codec. *)
+    mutable objc_used : bool;                (* [true] when codec was used. *)
+    mutable objc_mems :                            (* object member codecs. *)
       (string * mem_exists) list;
-    mutable objd_anon : anon_exists option; } (* unknown member description. *)
+    mutable objc_anon : anon_exists option; }      (* unknown member codec. *)
 
 (* Decode *)
 
@@ -254,18 +256,18 @@ let err_mem_miss okind n k d =
 let err_mem_unknown okind n k d =
   err (`Member (okind, (Js.to_string n), `Unknown)) k d
 
-let k_default descr k d = k descr.default d
+let k_default codec k d = k codec.default d
 
 let finish v d =
   let v = invalid_def v in
   d.dec_k <- (fun _ -> `Ok v); `Ok v
 
-let decoder ?(loc = false) ?(dups = `Skip) ?(unknown = `Skip) dec descr =
+let decoder ?(loc = false) ?(dups = `Skip) ?(unknown = `Skip) dec codec =
   let dec_k d =
     try
       let obj = Js._JSON ## parse (Jsont_codec.decoder_src d.dec) in
-      descr.decode descr obj finish d
-    with Js.Error e -> err_json_decoder e (k_default descr finish) d
+      codec.decode codec obj finish d
+    with Js.Error e -> err_json_decoder e (k_default codec finish) d
   in
   { dec_loc = loc; dec_dups = dups; dec_unknown = unknown; dec; dec_ctx = [];
     dec_k; }
@@ -283,112 +285,112 @@ let finish o e =
   e.enc_k <- (fun _ -> `Ok);
  `Ok
 
-let encoder enc descr v =
-  let enc_k e = descr.encode descr v finish e in
+let encoder enc codec v =
+  let enc_k e = codec.encode codec v finish e in
   { enc; enc_ctx = []; enc_k }
 
 let encode e = e.enc_k e
 let encoder_encoder e = e.enc
 
-(* JSON base value descriptions *)
+(* JSON base value codecs *)
 
 let default d = d.default
 let with_default v d = { d with default = v }
 
 let typ_boolean = Js.string "boolean"
-let bool : bool descr =
-  let decode descr o k d =
+let bool : bool codec =
+  let decode codec o k d =
     let typ = Js.typeof o in
-    if typ <> typ_boolean then err_type o typ "bool" (k_default descr k) d else
+    if typ <> typ_boolean then err_type o typ "bool" (k_default codec k) d else
     k (Js.to_bool (Obj.magic o : bool Js.t)) d
   in
-  let encode descr v k e = k (Obj.magic (Js.bool v) : < > Js.t) e in
+  let encode codec v k e = k (Obj.magic (Js.bool v) : < > Js.t) e in
   { default = false; decode; encode }
 
 let typ_number = Js.string "number"
-let float : float descr =
-  let decode descr o k d =
+let float : float codec =
+  let decode codec o k d =
     let typ = Js.typeof o in
-    if typ <> typ_number then err_type o typ "float" (k_default descr k) d else
+    if typ <> typ_number then err_type o typ "float" (k_default codec k) d else
     k (Obj.magic o : float) d
   in
-  let encode descr v k e = k (Obj.magic v : < > Js.t) e in
+  let encode codec v k e = k (Obj.magic v : < > Js.t) e in
   { default = 0.0; decode; encode }
 
-let int : int descr =
-  let decode descr o k d =
+let int : int codec =
+  let decode codec o k d =
     let typ = Js.typeof o in
-    if typ <> typ_number then err_type o typ "int" (k_default descr k) d else
+    if typ <> typ_number then err_type o typ "int" (k_default codec k) d else
     k (int_of_float (Obj.magic o : float)) d
   in
-  let encode descr v k e = k (Obj.magic (float_of_int v) : < > Js.t) e in
+  let encode codec v k e = k (Obj.magic (float_of_int v) : < > Js.t) e in
   { default = 0; decode; encode }
 
-let int_strict : int descr =
-  let decode descr o k d =
+let int_strict : int codec =
+  let decode codec o k d =
     let typ = Js.typeof o in
-    if typ <> typ_number then err_type o typ "int" (k_default descr k) d else
+    if typ <> typ_number then err_type o typ "int" (k_default codec k) d else
     let f : float = (Obj.magic o : float) in
     if f -. (floor f) <> 0.
-    then err_type o typ "int" (k_default descr k) d else
+    then err_type o typ "int" (k_default codec k) d else
     k (int_of_float f) d
   in
-  let encode descr v k e = k (Obj.magic (float_of_int v) : < > Js.t) e in
+  let encode codec v k e = k (Obj.magic (float_of_int v) : < > Js.t) e in
   { default = 0; decode; encode }
 
 let typ_string = Js.string "string"
 let nat_string_empty = Js.string ""
-let nat_string : Jsont_codec.nat_string descr =
-  let decode descr o k d =
+let nat_string : Jsont_codec.nat_string codec =
+  let decode codec o k d =
     let typ = Js.typeof o in
-    if typ <> typ_string then err_type o typ "string" (k_default descr k) d else
+    if typ <> typ_string then err_type o typ "string" (k_default codec k) d else
     k (Js.Unsafe.coerce o : Js.js_string Js.t) d
   in
-  let encode descr v k e = k (Js.Unsafe.coerce v : < > Js.t) e in
+  let encode codec v k e = k (Js.Unsafe.coerce v : < > Js.t) e in
   { default = nat_string_empty; decode; encode }
 
-let string : string descr =
-  let decode descr o k d =
+let string : string codec =
+  let decode codec o k d =
     let typ = Js.typeof o in
-    if typ <> typ_string then err_type o typ "string" (k_default descr k) d else
+    if typ <> typ_string then err_type o typ "string" (k_default codec k) d else
     k (Js.to_string (Obj.magic o : Js.js_string Js.t)) d
   in
-  let encode descr v k e = k (Js.Unsafe.coerce (Js.string v) : < > Js.t) e in
+  let encode codec v k e = k (Js.Unsafe.coerce (Js.string v) : < > Js.t) e in
   { default = ""; decode; encode }
 
 let nullable base =
-  let decode descr o k d =
+  let decode codec o k d =
     if o = null then k None d else
     base.decode base o (fun v -> k (Some v)) d
   in
-  let encode descr v k e = match v with
+  let encode codec v k e = match v with
   | None -> k null e
   | Some v -> base.encode base v k e
   in
   { default = Some base.default; decode; encode }
 
-let codec ?default (vdec, venc) base =
+let view ?default (vdec, venc) base =
   let default = match default with
   | Some v -> v
   | None ->
       match vdec base.default with
       | `Ok d -> d | `Error msg -> invalid_arg (err_conv_default msg)
   in
-  let decode descr o k d =
+  let decode codec o k d =
     let vdec k v d = match vdec v with
-    | `Error msg -> err_value_decoder msg (k_default descr k) d
+    | `Error msg -> err_value_decoder msg (k_default codec k) d
     | `Ok v -> k v d
     in
     base.decode base o (vdec k) d
   in
-  let encode descr v k e = base.encode base (venc v) k e in
+  let encode codec v k e = base.encode base (venc v) k e in
   { default; decode; encode }
 
 let type_match ~default decd encd =
-  let decode descr o k d =
+  let decode codec o k d =
     let use typ = match decd typ with
     | `Ok vd -> vd.decode vd o k d
-    | `Error e -> err_value_decoder e (k_default descr k) d
+    | `Error e -> err_value_decoder e (k_default codec k) d
     in
     if o = null then use `Null else
     let typ = Js.typeof o in
@@ -398,37 +400,37 @@ let type_match ~default decd encd =
     if is_array o then use `Array else
     use `Object
   in
-  let encode descr v k e = let descr = encd v in descr.encode descr v k e in
+  let encode codec v k e = let codec = encd v in codec.encode codec v k e in
   { default; decode; encode }
 
 let soup =
-  let decode descr o k d = k o d in
-  let encode descr v k e  = k v e in
+  let decode codec o k d = k o d in
+  let encode codec v k e  = k v e in
   { default = null; decode; encode }
 
 let some base =
-  let decode descr o k d = base.decode base o (fun v -> k (Some v)) d in
-  let encode descr v k e = match v with
+  let decode codec o k d = base.decode base o (fun v -> k (Some v)) d in
+  let encode codec v k e = match v with
   | None -> invalid_arg err_some_combinator
   | Some v -> base.encode base v k e
   in
   { default = None; decode; encode }
 
-(* JSON array descriptions *)
+(* JSON array codecs *)
 
-let decode_array elt descr o k d =
+let decode_array elt codec o k d =
   let rec loop acc a max i k d =
     if i > max then k (List.rev acc) d else
     let (o : < > Js.t) = Obj.magic (Js.array_get a i) in
     elt.decode elt o (fun v -> loop (v :: acc) a max (i + 1) k) d
   in
   if not (is_array o)
-  then err_type o (Js.typeof o) "array" (k_default descr k) d
+  then err_type o (Js.typeof o) "array" (k_default codec k) d
   else
   let (a : < > Js.t Js.js_array Js.t) = Js.Unsafe.coerce o in
   loop [] a (a ## length - 1) 0 k d
 
-let encode_array elt descr vs k e  =
+let encode_array elt codec vs k e  =
   let rec loop elt vs result i k e = match vs with
   | [] -> k (Js.Unsafe.coerce result : < > Js.t) e
   | v :: vs ->
@@ -438,76 +440,76 @@ let encode_array elt descr vs k e  =
   loop elt vs (Js.array [||]) 0 k e
 
 let array elt =
-  let decode descr o k d = decode_array elt descr o k d in
-  let encode descr v k e = encode_array elt descr v k e in
+  let decode codec o k d = decode_array elt codec o k d in
+  let encode codec v k e = encode_array elt codec v k e in
   { default = []; decode; encode }
 
 let array_array elt =
   (* FIXME this could avoid lists. *)
   let c = (fun v -> `Ok (Array.of_list v)), (fun v -> Array.to_list v) in
-  codec c (array elt)
+  view c (array elt)
 
-(* JSON object description *)
+(* JSON object codecs *)
 
-let objd ?kind () =
-  let objd_id = Id.create () in
-  let objd_kind = match kind with None -> str "o%d" objd_id | Some k -> k in
-  let objd_used = false in
-  let objd_mems = [] in
-  let objd_anon = None in
-  { objd_id; objd_kind; objd_used; objd_mems; objd_anon; }
+let objc ?kind () =
+  let objc_id = Id.create () in
+  let objc_kind = match kind with None -> str "o%d" objc_id | Some k -> k in
+  let objc_used = false in
+  let objc_mems = [] in
+  let objc_anon = None in
+  { objc_id; objc_kind; objc_used; objc_mems; objc_anon; }
 
-let check_add objd name =
-  if objd.objd_used then invalid_arg (err_objd_used objd.objd_kind) else
-  if List.mem_assoc name objd.objd_mems
-  then invalid_arg (err_objd_dup_mem objd.objd_kind name) else
+let check_add objc name =
+  if objc.objc_used then invalid_arg (err_objc_used objc.objc_kind) else
+  if List.mem_assoc name objc.objc_mems
+  then invalid_arg (err_objc_dup_mem objc.objc_kind name) else
   ()
 
-let mem ?(eq = ( = )) ?(opt = `No) objd name mem_descr =
-  check_add objd name;
-  let mem_oid = objd.objd_id in
+let mem ?(eq = ( = )) ?(opt = `No) objc name mem_codec =
+  check_add objc name;
+  let mem_oid = objc.objc_id in
   let mem_name = Js.string name in
   let mem_opt = match opt with `No | `Yes as v -> v | `Yes_rem -> `Yes_rem eq in
-  let mem = { mem_oid; mem_name; mem_descr; mem_opt } in
-  objd.objd_mems <- (name, (Me mem)) :: objd.objd_mems;
+  let mem = { mem_oid; mem_name; mem_codec; mem_opt } in
+  objc.objc_mems <- (name, (Me mem)) :: objc.objc_mems;
   mem
 
-let mem_match ?eq ?opt objd mmatch name select =
-  if objd.objd_id <>  mmatch.mem_oid
+let mem_match ?eq ?opt objc mmatch name select =
+  if objc.objc_id <>  mmatch.mem_oid
   then invalid_arg (err_mem_oid (Js.to_string mmatch.mem_name)) else
-  let descr =
-    let default = (select mmatch.mem_descr.default).default in
-    let decode descr o k d =
+  let codec =
+    let default = (select mmatch.mem_codec.default).default in
+    let decode codec o k d =
       let ctx = match d.dec_ctx with [] -> assert false | ctx :: _ -> ctx in
       let v = obj_get_mem ctx mmatch.mem_name in
-      let descr = select v in
-      descr.decode descr o k d
+      let codec = select v in
+      codec.decode codec o k d
     in
-    let encode descr o k e =
+    let encode codec o k e =
       let ctx = match e.enc_ctx with [] -> assert false | ctx :: _ -> ctx in
       let v = obj_get_mem ctx mmatch.mem_name in
-      let descr = select v in
-      descr.encode descr o k e
+      let codec = select v in
+      codec.encode codec o k e
     in
     { default; decode; encode }
   in
-  mem ?eq ?opt objd name descr
+  mem ?eq ?opt objc name codec
 
-let anon ?default objd anon_descr =
-  if objd.objd_used then invalid_arg (err_objd_used objd.objd_kind) else
-  if objd.objd_anon <> None then invalid_arg (err_objd_dup_anon objd.objd_kind)
+let anon ?default objc anon_codec =
+  if objc.objc_used then invalid_arg (err_objc_used objc.objc_kind) else
+  if objc.objc_anon <> None then invalid_arg (err_objc_dup_anon objc.objc_kind)
   else
-  let anon_oid = objd.objd_id in
+  let anon_oid = objc.objc_id in
   let anon_default = match default with None -> [] | Some v -> v in
-  let anon = { anon_oid; anon_default; anon_descr } in
-  objd.objd_anon <- Some (Ae anon);
+  let anon = { anon_oid; anon_default; anon_codec } in
+  objc.objc_anon <- Some (Ae anon);
   anon
 
-let objd_default objd =
-  let o = obj_empty objd.objd_id in
-  let set_mem (k, (Me m)) = obj_set_mem o m.mem_name m.mem_descr.default in
-  List.iter set_mem objd.objd_mems;
-  begin match objd.objd_anon with
+let objc_default objc =
+  let o = obj_empty objc.objc_id in
+  let set_mem (k, (Me m)) = obj_set_mem o m.mem_name m.mem_codec.default in
+  List.iter set_mem objc.objc_mems;
+  begin match objc.objc_anon with
   | None -> ()
   | Some (Ae a) ->
       let add_anon (k, v) = obj_set_anon o (Js.string k) v in
@@ -515,49 +517,49 @@ let objd_default objd =
   end;
   o
 
-let rec decode_anon_mems objd anons o result k d = match anons with
+let rec decode_anon_mems objc anons o result k d = match anons with
 | [] -> k result d
 | (_, js_name) :: anons ->
-    match objd.objd_anon with
+    match objc.objc_anon with
     | None ->
         begin match d.dec_unknown with
-        | `Skip -> decode_anon_mems objd anons o result k d
+        | `Skip -> decode_anon_mems objc anons o result k d
         | `Error ->
-            err_mem_unknown objd.objd_kind js_name
-              (decode_anon_mems objd anons o result k) d
+            err_mem_unknown objc.objc_kind js_name
+              (decode_anon_mems objc anons o result k) d
         end
     | Some (Ae a) ->
         let set v d =
           obj_set_anon result js_name v;
-          decode_anon_mems objd anons o result k d
+          decode_anon_mems objc anons o result k d
         in
-        a.anon_descr.decode a.anon_descr (Js.Unsafe.get o js_name) set d
+        a.anon_codec.decode a.anon_codec (Js.Unsafe.get o js_name) set d
 
-let rec decode_mems objd names o mems result k d = match mems with
-| [] -> decode_anon_mems objd names o result k d
+let rec decode_mems objc names o mems result k d = match mems with
+| [] -> decode_anon_mems objc names o result k d
 | (n, Me mem) :: mems ->
     match try Some (List.assoc n names) with Not_found -> None with
     | None ->
-        obj_set_mem result mem.mem_name mem.mem_descr.default;
+        obj_set_mem result mem.mem_name mem.mem_codec.default;
         begin match mem.mem_opt with
-        | `Yes | `Yes_rem _  -> decode_mems objd names o mems result k d
+        | `Yes | `Yes_rem _  -> decode_mems objc names o mems result k d
         | `No ->
-            err_mem_miss objd.objd_kind mem.mem_name
-              (decode_mems objd names o mems result k) d
+            err_mem_miss objc.objc_kind mem.mem_name
+              (decode_mems objc names o mems result k) d
         end
     | Some js_name ->
         let names = List.remove_assoc n names in
         let set v d =
           obj_set_mem result js_name v;
-          decode_mems objd names o mems result k d
+          decode_mems objc names o mems result k d
         in
-        mem.mem_descr.decode mem.mem_descr (Js.Unsafe.get o n) set d
+        mem.mem_codec.decode mem.mem_codec (Js.Unsafe.get o n) set d
 
 let typ_object = Js.string "object"
-let decode_obj objd descr o k d =
+let decode_obj objc codec o k d =
   let typ = Js.typeof o in
   if not (typ = typ_object) || (is_array o)
-  then err_type o typ "object" (k_default descr k) d else
+  then err_type o typ "object" (k_default codec k) d else
   let names =
     let keys = jobj_keys o in
     let rec loop acc max i =
@@ -567,55 +569,55 @@ let decode_obj objd descr o k d =
     in
     loop [] (keys ## length - 1) 0
   in
-  let result = obj_empty objd.objd_id in
+  let result = obj_empty objc.objc_id in
   let pop k result d = d.dec_ctx <- List.tl d.dec_ctx; k result d in
   d.dec_ctx <- result :: d.dec_ctx;
-  decode_mems objd names o objd.objd_mems result (pop k) d
+  decode_mems objc names o objc.objc_mems result (pop k) d
 
-let encode_anons objd o k result e =
+let encode_anons objc o k result e =
   let rec loop names max i result k e =
     if i > max then k result e else
     let (name : Js.js_string Js.t) = Obj.magic (Js.array_get names i) in
-    match objd.objd_anon with
+    match objc.objc_anon with
     | None -> assert false
     | Some (Ae a) ->
         let set v e =
           Js.Unsafe.set result name v; loop names max (i + 1) result k e
         in
-        a.anon_descr.encode a.anon_descr (obj_get_anon o name) set e
+        a.anon_codec.encode a.anon_codec (obj_get_anon o name) set e
   in
   let names = obj_anon_keys o in
   loop names (names ## length - 1) 0 result k e
 
-let encode_mems objd o result k e =
+let encode_mems objc o result k e =
   let rec loop names result k e = match names with
   | [] -> k result e
   | (n, Me mem) :: names ->
       let v = obj_get_mem o mem.mem_name in
       match mem.mem_opt with
-      | `Yes_rem eq when eq v mem.mem_descr.default ->
+      | `Yes_rem eq when eq v mem.mem_codec.default ->
           loop names result k e
       | _ ->
           let set v e =
             Js.Unsafe.set result mem.mem_name v; loop names result k e
           in
-          mem.mem_descr.encode mem.mem_descr v set e
+          mem.mem_codec.encode mem.mem_codec v set e
   in
-  loop objd.objd_mems result k e
+  loop objc.objc_mems result k e
 
-let encode_obj objd descr o k e =
-  if obj_get_oid o <> objd.objd_id then invalid_arg err_oid else
+let encode_obj objc codec o k e =
+  if obj_get_oid o <> objc.objc_id then invalid_arg err_oid else
   let result = Js.Unsafe.obj [||] in
   let pop k result d = e.enc_ctx <- List.tl e.enc_ctx; k result d in
   e.enc_ctx <- o :: e.enc_ctx;
-  encode_mems objd o result (encode_anons objd o (pop k)) e
+  encode_mems objc o result (encode_anons objc o (pop k)) e
 
-let obj objd =
-  objd.objd_used <- true;
-  objd.objd_mems <- List.rev objd.objd_mems; (* order for dec. match mems *)
-  let decode descr o k d = decode_obj objd descr o k d in
-  let encode descr o k e = encode_obj objd descr o k e in
-  { default = objd_default objd; decode; encode }
+let obj objc =
+  objc.objc_used <- true;
+  objc.objc_mems <- List.rev objc.objc_mems; (* order for dec. match mems *)
+  let decode codec o k d = decode_obj objc codec o k d in
+  let encode codec o k e = encode_obj objc codec o k e in
+  { default = objc_default objc; decode; encode }
 
 (* JSON object values *)
 
