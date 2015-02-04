@@ -513,15 +513,15 @@ let objc_default objc =
 (* The object decoding code is particulary painful. Please do not vomit.
    FIXME. *)
 
-let rec decode_miss_mems objc miss o k d = match miss with
+let rec decode_miss_mems objc loc miss o k d = match miss with
 | [] -> k o d
 | (n, Me m) :: miss ->
     let v = m.mem_to_univ (invalid_def m.mem_codec.default) in
     let o = { o with obj_mems = Mmap.add m.mem_id v o.obj_mems } in
     match m.mem_opt with
-    | `Yes | `Yes_rem _ -> decode_miss_mems objc miss o k d
+    | `Yes | `Yes_rem _ -> decode_miss_mems objc loc miss o k d
     | `No ->
-        err_mem_miss (loc d) objc.objc_kind n (decode_miss_mems objc miss o k) d
+        err_mem_miss loc objc.objc_kind n (decode_miss_mems objc loc miss o k) d
 
 let rec decode_anon_mem objc o n loc k d = match objc.objc_anon with
 | None ->
@@ -570,9 +570,9 @@ let decode_obj objc codec k d =
   let start = loc d in
   let rec loop k miss delayed o d = match d.dec_lex with
   | `Lexeme `Oe ->
-      decode_miss_mems objc (Smap.bindings miss) o
-        (decode_delayed objc (loc_merge start (loc d)) delayed
-           (fun o -> dec_next (k o))) d
+      let loc = loc_merge start (loc d) in
+      decode_miss_mems objc loc (Smap.bindings miss) o
+        (decode_delayed objc loc delayed (fun o -> dec_next (k o))) d
   | `Lexeme (`Name n) ->
       begin match try Some (Smap.find n objc.objc_mems) with Not_found -> None
       with
