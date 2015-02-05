@@ -199,7 +199,7 @@ val mem :
     or if [o]'s codec was already {{!obj}used}. *)
 
 val mem_opt : objc -> string -> 'a codec -> 'a option mem
-(** [mem_opt o name c] is [mem objc name ~opt:`Yes_rem (some c)]. In
+(** [mem_opt o name c] is [mem o name ~opt:`Yes_rem (some c)]. In
     other words: if the member is absent on decoding the member value
     with [None]; if the member value is [None] on encoding, the
     member is not encoded. *)
