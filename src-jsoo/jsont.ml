@@ -475,6 +475,8 @@ let mem ?(eq = ( = )) ?(opt = `No) objc name mem_codec =
   objc.objc_mems <- (name, (Me mem)) :: objc.objc_mems;
   mem
 
+let mem_opt objc mem_name codec = mem objc mem_name (some codec)
+
 let mem_match ?eq ?opt objc mmatch name select =
   if objc.objc_id <>  mmatch.mem_oid
   then invalid_arg (err_mem_oid (Js.to_string mmatch.mem_name)) else

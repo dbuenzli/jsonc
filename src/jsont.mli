@@ -198,6 +198,12 @@ val mem :
     @raise Invalid_argument if [name] is already described in [o]
     or if [o]'s codec was already {{!obj}used}. *)
 
+val mem_opt : objc -> string -> 'a codec -> 'a option mem
+(** [mem_opt o name c] is [mem objc name ~opt:`Yes_rem (some c)]. In
+    other words: if the member is absent on decoding the member value
+    with [None]; if the member value is [None] on encoding, the
+    member is not encoded. *)
+
 val mem_match :
   ?eq:('b -> 'b -> bool) ->
   ?opt:[ `No | `Yes | `Yes_rem] ->
