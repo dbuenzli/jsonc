@@ -475,7 +475,7 @@ let mem ?(eq = ( = )) ?(opt = `No) objc name mem_codec =
   objc.objc_mems <- (name, (Me mem)) :: objc.objc_mems;
   mem
 
-let mem_opt objc mem_name codec = mem objc mem_name (some codec)
+let mem_opt objc mem_name codec = mem objc mem_name ~opt:`Yes_rem (some codec)
 
 let mem_match ?eq ?opt objc mmatch name select =
   if objc.objc_id <>  mmatch.mem_oid

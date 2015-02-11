@@ -456,7 +456,7 @@ let _mem ?(eq = ( = )) ?(opt = `No) mem_dep objc mem_name mem_codec =
   mem
 
 let mem ?eq ?opt objc mem_name codec = _mem ?eq ?opt None objc mem_name codec
-let mem_opt objc mem_name codec = mem objc mem_name (some codec)
+let mem_opt objc mem_name codec = mem objc mem_name ~opt:`Yes_rem (some codec)
 
 let mem_match ?eq ?opt objc mmatch name select =
   if objc.objc_id <>  mmatch.mem_oid

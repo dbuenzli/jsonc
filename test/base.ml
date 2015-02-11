@@ -241,6 +241,17 @@ let test_object_mems () =
                                               "{ \"a\" : true }")) 3.0;
     is_equal pp_float (Jsont.get mem_a (trip "{}")) 3.0
   in
+  let () =
+    let objc = Jsont.objc ~kind:"test" () in
+    let mem_a = Jsont.mem_opt objc "a" Jsont.float in
+    let codec = Jsont.obj objc in
+    let trip, err = ok_trip codec, err_trip codec in
+    let pp_ofloat = pp_ocaml_opt pp_float in
+    is_equal pp_ofloat (Jsont.get mem_a (trip "{ \"a\" : 2.0 }")) (Some 2.0);
+    is_equal pp_ofloat (Jsont.get mem_a (err (`Type ("bool", "float"))
+                                           "{ \"a\" : true }")) (Some 0.0);
+    is_equal pp_ofloat (Jsont.get mem_a (trip "{}")) None
+  in
   ()
 
 type tag = [ `Bool of bool | `Int of int ]
