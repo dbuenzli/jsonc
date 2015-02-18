@@ -14,8 +14,8 @@ let err_objc_dup_mem k n =
 let err_objc_dup_anon k =
   str "object codec %s: duplicate description for anonymous members" k
 
-let err_objc_used k =
-  str "object codec %s: codec already in use" k
+let err_objc_sealed k =
+  str "object codec %s: description already sealed" k
 
 let err_some_combinator =
   str "Jsont.some misuse: cannot be used to encode None"
@@ -153,7 +153,7 @@ type anon_exists = Ae : 'a anon -> anon_exists
 type objc =                                           (* JSON object codec. *)
   { objc_id : int;                                      (* object codec id. *)
     objc_kind : string;                     (* a name for the object codec. *)
-    mutable objc_used : bool;                (* [true] when codec was used. *)
+    mutable objc_sealed : bool;           (* [true] when object was sealed. *)
     mutable objc_mem_list :                         (* object member codec. *)
       (string * mem_exists) list;
     mutable objc_mems :                    (* object member codec as a map. *)
@@ -429,14 +429,14 @@ let array_array elt =
 let objc ?kind () =
   let objc_id = Id.create () in
   let objc_kind = match kind with None -> str "o%d" objc_id | Some k -> k in
-  let objc_used = false in
+  let objc_sealed = false in
   let objc_mem_list = [] in
   let objc_mems = Smap.empty in
   let objc_anon = None in
-  { objc_id; objc_kind; objc_used; objc_mem_list; objc_mems; objc_anon; }
+  { objc_id; objc_kind; objc_sealed; objc_mem_list; objc_mems; objc_anon; }
 
 let check_add objc name =
-  if objc.objc_used then invalid_arg (err_objc_used objc.objc_kind) else
+  if objc.objc_sealed then invalid_arg (err_objc_sealed objc.objc_kind) else
   if Smap.mem name objc.objc_mems
   then invalid_arg (err_objc_dup_mem objc.objc_kind name) else
   ()
@@ -483,7 +483,7 @@ let mem_match ?eq ?opt objc mmatch name select =
   _mem ?eq ?opt (Some (Me mmatch)) objc name codec
 
 let anon ?default objc anon_codec =
-  if objc.objc_used then invalid_arg (err_objc_used objc.objc_kind) else
+  if objc.objc_sealed then invalid_arg (err_objc_sealed objc.objc_kind) else
   if objc.objc_anon <> None then invalid_arg (err_objc_dup_anon objc.objc_kind)
   else
   let anon_oid = objc.objc_id in
@@ -650,7 +650,7 @@ let encode_obj objc codec o k e =
           (enc_next (`Lexeme `Oe) (pop k)))) e
 
 let obj objc =
-  objc.objc_used <- true;
+  objc.objc_sealed <- true;
   objc.objc_mem_list <- List.rev objc.objc_mem_list; (* dependency order. *)
   let decode codec k d = decode_obj objc codec k d in
   let encode codec k e = encode_obj objc codec k e in
