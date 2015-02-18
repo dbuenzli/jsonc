@@ -30,6 +30,9 @@ let err_objc_dup_anon k =
 let err_objc_sealed k =
   str "object codec %s: description already sealed" k
 
+let err_objc_not_sealed k =
+  str "object codec %s: description is not sealed" k
+
 let err_some_combinator =
   str "Jsont.some misuse: cannot be used to encode None"
 
@@ -512,6 +515,8 @@ let anon ?default objc anon_codec =
   anon
 
 let objc_default objc =
+  if not objc.objc_sealed then invalid_arg (err_objc_not_sealed objc.objc_kind)
+  else
   let o = obj_empty objc.objc_id in
   let set_mem (k, (Me m)) = obj_set_mem o m.mem_name m.mem_codec.default in
   List.iter set_mem objc.objc_mems;
@@ -618,9 +623,11 @@ let encode_obj objc codec o k e =
   e.enc_ctx <- o :: e.enc_ctx;
   encode_mems objc o result (encode_anons objc o (pop k)) e
 
-let obj objc =
-  objc.objc_sealed <- true;
-  objc.objc_mems <- List.rev objc.objc_mems; (* order for dec. match mems *)
+let obj ?(seal = true) objc =
+  if seal then begin
+    objc.objc_sealed <- true;
+    objc.objc_mems <- List.rev objc.objc_mems; (* order for dec. match mems *)
+  end;
   let decode codec o k d = decode_obj objc codec o k d in
   let encode codec o k e = encode_obj objc codec o k e in
   { default = lazy (objc_default objc); decode; encode }

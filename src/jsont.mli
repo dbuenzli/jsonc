@@ -196,7 +196,7 @@ val mem :
        (defaults to [=]), the member will not be encoded in the output.}}
 
     @raise Invalid_argument if [name] is already described in [o]
-    or if [o]'s codec was already {{!obj}used}. *)
+    or if [o] was already {{!obj}sealed}. *)
 
 val mem_opt : objc -> string -> 'a codec -> 'a option mem
 (** [mem_opt o name c] is [mem o name ~opt:`Yes_rem (some c)]. In
@@ -213,21 +213,29 @@ val mem_match :
     of the member [m] in the JSON object. Its default is the default of
     the codec resulting from applying [m]'s default to [select]. *)
 
-
 val anon : ?default:(string * 'a) list -> objc -> 'a codec -> 'a anon
 (** [anon o c] declares that all unknown object members of [o]
     have a JSON value [c].
 
     @raise Invalid_argument if [o] already has an anonymous member
-    description or if [o]'s codec was already {{!obj}used}. *)
+    description or if [o] was already {{!obj}sealed}. *)
 
-val obj : objc -> obj codec
-(** [obj o] is a codec for a JSON object described by [o]. An
-    object with the defaults of [o]'s members is the default value.
+val obj : ?seal:bool -> objc -> obj codec
+(** [obj seal o] is a codec for a JSON object described by [o]. The default
+    value is an object [o]'s members defaults.
 
-    {b Warning.} Once [o] has been used using [obj] it is no longer
-    possible to modify the object codec [o] using {!anon} or {!mem}
-    and its derivatives.  *)
+    If [seal] is [true] (default), [o] is sealed and the resulting
+    codec can be used to codec data; it is no longer possible to
+    modify it using {!anon} or {!mem}.
+
+    If [seal] is [false], [o] is not sealed. The resulting codec can
+    be used with the combinators in the definition of other codecs and
+    it's still possible to modify [o]. However [Invalid_argument] is
+    raised if the codec is used to codec data or if it's default value
+    accessed with {!Jsont.default} (either directly or indirectly
+    through the default value of a codec that depends on it). It will
+    be usable once [o] has been seal by calling [obj] again on [o]
+    with [seal:true] (the resulting codec can be ignored). *)
 
 (** {1:object_values JSON object value}
 
