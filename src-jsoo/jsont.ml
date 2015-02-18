@@ -202,7 +202,7 @@ and encoder =
     mutable enc_k : encoder -> encode }           (* encoding kontinuation. *)
 
 and 'a codec =                                         (* JSON value codec. *)
-  { default : 'a;                                         (* default value. *)
+  { default : 'a Lazy.t;                                  (* default value. *)
     decode :                                              (* value decoder. *)
       'b. 'a codec -> < > Js.t -> ('a -> 'b decoder -> 'b decode) ->
           'b decoder -> 'b decode;
@@ -257,7 +257,7 @@ let err_mem_miss okind n k d =
 let err_mem_unknown okind n k d =
   err (`Member (okind, (Js.to_string n), `Unknown)) k d
 
-let k_default codec k d = k codec.default d
+let k_default codec k d = k (Lazy.force codec.default) d
 
 let finish v d =
   let v = invalid_def v in
@@ -295,8 +295,8 @@ let encoder_encoder e = e.enc
 
 (* JSON base value codecs *)
 
-let default d = d.default
-let with_default v d = { d with default = v }
+let default d = Lazy.force d.default
+let with_default v d = { d with default = Lazy.from_val v }
 
 let typ_boolean = Js.string "boolean"
 let bool : bool codec =
@@ -306,7 +306,7 @@ let bool : bool codec =
     k (Js.to_bool (Obj.magic o : bool Js.t)) d
   in
   let encode codec v k e = k (Obj.magic (Js.bool v) : < > Js.t) e in
-  { default = false; decode; encode }
+  { default = Lazy.from_val false; decode; encode }
 
 let typ_number = Js.string "number"
 let float : float codec =
@@ -316,7 +316,7 @@ let float : float codec =
     k (Obj.magic o : float) d
   in
   let encode codec v k e = k (Obj.magic v : < > Js.t) e in
-  { default = 0.0; decode; encode }
+  { default = Lazy.from_val 0.0; decode; encode }
 
 let int : int codec =
   let decode codec o k d =
@@ -325,7 +325,7 @@ let int : int codec =
     k (int_of_float (Obj.magic o : float)) d
   in
   let encode codec v k e = k (Obj.magic (float_of_int v) : < > Js.t) e in
-  { default = 0; decode; encode }
+  { default = Lazy.from_val 0; decode; encode }
 
 let int_strict : int codec =
   let decode codec o k d =
@@ -337,7 +337,7 @@ let int_strict : int codec =
     k (int_of_float f) d
   in
   let encode codec v k e = k (Obj.magic (float_of_int v) : < > Js.t) e in
-  { default = 0; decode; encode }
+  { default = Lazy.from_val 0; decode; encode }
 
 let typ_string = Js.string "string"
 let nat_string_empty = Js.string ""
@@ -348,7 +348,7 @@ let nat_string : Jsont_codec.nat_string codec =
     k (Js.Unsafe.coerce o : Js.js_string Js.t) d
   in
   let encode codec v k e = k (Js.Unsafe.coerce v : < > Js.t) e in
-  { default = nat_string_empty; decode; encode }
+  { default = Lazy.from_val nat_string_empty; decode; encode }
 
 let string : string codec =
   let decode codec o k d =
@@ -357,7 +357,7 @@ let string : string codec =
     k (Js.to_string (Obj.magic o : Js.js_string Js.t)) d
   in
   let encode codec v k e = k (Js.Unsafe.coerce (Js.string v) : < > Js.t) e in
-  { default = ""; decode; encode }
+  { default = Lazy.from_val ""; decode; encode }
 
 let nullable base =
   let decode codec o k d =
@@ -368,14 +368,15 @@ let nullable base =
   | None -> k null e
   | Some v -> base.encode base v k e
   in
-  { default = Some base.default; decode; encode }
+  { default = lazy (Some (Lazy.force base.default)); decode; encode }
 
 let view ?default (vdec, venc) base =
   let default = match default with
-  | Some v -> v
+  | Some v -> Lazy.from_val v
   | None ->
-      match vdec base.default with
+      lazy begin match vdec (Lazy.force base.default) with
       | `Ok d -> d | `Error msg -> invalid_arg (err_conv_default msg)
+      end
   in
   let decode codec o k d =
     let vdec k v d = match vdec v with
@@ -402,12 +403,12 @@ let type_match ~default decd encd =
     use `Object
   in
   let encode codec v k e = let codec = encd v in codec.encode codec v k e in
-  { default; decode; encode }
+  { default = Lazy.from_val default; decode; encode }
 
 let soup =
   let decode codec o k d = k o d in
   let encode codec v k e  = k v e in
-  { default = null; decode; encode }
+  { default = Lazy.from_val null; decode; encode }
 
 let some base =
   let decode codec o k d = base.decode base o (fun v -> k (Some v)) d in
@@ -415,7 +416,7 @@ let some base =
   | None -> invalid_arg err_some_combinator
   | Some v -> base.encode base v k e
   in
-  { default = None; decode; encode }
+  { default = Lazy.from_val None; decode; encode }
 
 (* JSON array codecs *)
 
@@ -443,7 +444,7 @@ let encode_array elt codec vs k e  =
 let array elt =
   let decode codec o k d = decode_array elt codec o k d in
   let encode codec v k e = encode_array elt codec v k e in
-  { default = []; decode; encode }
+  { default = Lazy.from_val []; decode; encode }
 
 let array_array elt =
   (* FIXME this could avoid lists. *)
@@ -481,7 +482,9 @@ let mem_match ?eq ?opt objc mmatch name select =
   if objc.objc_id <>  mmatch.mem_oid
   then invalid_arg (err_mem_oid (Js.to_string mmatch.mem_name)) else
   let codec =
-    let default = (select mmatch.mem_codec.default).default in
+    let default =
+      lazy (Lazy.force (select (Lazy.force mmatch.mem_codec.default)).default)
+    in
     let decode codec o k d =
       let ctx = match d.dec_ctx with [] -> assert false | ctx :: _ -> ctx in
       let v = obj_get_mem ctx mmatch.mem_name in
@@ -598,7 +601,7 @@ let encode_mems objc o result k e =
   | (n, Me mem) :: names ->
       let v = obj_get_mem o mem.mem_name in
       match mem.mem_opt with
-      | `Yes_rem eq when eq v mem.mem_codec.default ->
+      | `Yes_rem eq when eq v (Lazy.force mem.mem_codec.default) ->
           loop names result k e
       | _ ->
           let set v e =
@@ -620,7 +623,7 @@ let obj objc =
   objc.objc_mems <- List.rev objc.objc_mems; (* order for dec. match mems *)
   let decode codec o k d = decode_obj objc codec o k d in
   let encode codec o k e = encode_obj objc codec o k e in
-  { default = objc_default objc; decode; encode }
+  { default = lazy (objc_default objc); decode; encode }
 
 (* JSON object values *)
 
@@ -665,7 +668,7 @@ let memv m v = M (m, v)
 let anonv a n v = A (a, n, v)
 
 let new_obj d mems =
-  let o = obj_copy d.default in
+  let o = obj_copy (Lazy.force d.default) in
   let set = function
   | M (m, v) -> check_mem_oid o m; obj_set_mem o m.mem_name v
   | A (a, n, v) -> check_anon_oid o a; obj_set_anon o n v

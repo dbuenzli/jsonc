@@ -121,7 +121,7 @@ and encoder =
     mutable enc_k : encoder -> encode }            (* encoder kontinuation. *)
 
 and 'a codec =                                         (* JSON value codec. *)
-  { default : 'a;                                         (* default value. *)
+  { default : 'a Lazy.t;                                  (* default value. *)
     decode :                                              (* value decoder. *)
       'b. 'a codec -> ('a def -> 'b decoder -> 'b decode) ->
           'b decoder -> 'b decode;
@@ -202,8 +202,9 @@ let rec dec_next k d = match d.dec_delayed with
   | `End -> d.dec_lex <- `End; k d
   | `Error e -> err_json_decoder (loc d) e (dec_next k) d
 
-let k_default codec k loc = k (loc, codec.default)
-let k_default_range codec k start loc = k (loc_merge start loc, codec.default)
+let k_default codec k loc = k (loc, Lazy.force codec.default)
+let k_default_range codec k start loc =
+  k (loc_merge start loc, Lazy.force codec.default)
 
 let skip_value k d =
   let start = loc d in
@@ -250,8 +251,8 @@ let encoder_encoder e = e.enc
 
 (* JSON value codec combinators *)
 
-let default d = d.default
-let with_default v d = { d with default = v }
+let default d = Lazy.force d.default
+let with_default v d = { d with default = lazy v }
 
 let decode_err typ codec k d = match d.dec_lex with
 | `Lexeme l -> err_type (loc d) l typ (skip_value (k_default codec k)) d
@@ -263,7 +264,7 @@ let bool =
   | _ -> decode_err "bool" codec k d
   in
   let encode codec b k e = enc_next (`Lexeme (`Bool b)) k e in
-  { default = false; decode; encode }
+  { default = Lazy.from_val false; decode; encode }
 
 let float =
   let decode codec k d = match d.dec_lex with
@@ -271,7 +272,7 @@ let float =
   | _ -> decode_err "float" codec k d
   in
   let encode codec f k e = enc_next (`Lexeme (`Float f)) k e in
-  { default = 0.0; decode; encode }
+  { default = Lazy.from_val 0.0; decode; encode }
 
 let int =
   let decode codec k d = match d.dec_lex with
@@ -279,7 +280,7 @@ let int =
   | _ -> decode_err "int" codec k d
   in
   let encode codec i k e = enc_next (`Lexeme (`Float (float_of_int i))) k e in
-  { default = 0; decode; encode }
+  { default = Lazy.from_val 0; decode; encode }
 
 let int_strict =
   let decode codec k d = match d.dec_lex with
@@ -290,7 +291,7 @@ let int_strict =
   | _ -> decode_err "int" codec k d
   in
   let encode codec i k e = enc_next (`Lexeme (`Float (float_of_int i))) k e in
-  { default = 0; decode; encode }
+  { default = Lazy.from_val 0; decode; encode }
 
 let string =
   let decode codec k d = match d.dec_lex with
@@ -298,7 +299,7 @@ let string =
   | _ -> decode_err "string" codec k d
   in
   let encode codec s k e = enc_next (`Lexeme (`String s)) k e in
-  { default = ""; decode; encode }
+  { default = Lazy.from_val ""; decode; encode }
 
 let nat_string = string
 
@@ -312,14 +313,15 @@ let nullable base =
   | None -> enc_next (`Lexeme `Null) k e
   | Some v -> base.encode base v k e
   in
-  { default = Some base.default; decode; encode }
+  { default = lazy (Some (Lazy.force base.default)); decode; encode }
 
 let view ?default (vdec, venc) base =
   let default = match default with
-  | Some v -> v
+  | Some v -> Lazy.from_val v
   | None ->
-      match vdec base.default with
+      lazy begin match vdec (Lazy.force base.default) with
       | `Ok d -> d | `Error msg -> invalid_arg (err_conv_default msg)
+      end
   in
   let decode codec k d =
     let vdec k (loc, v) d = match vdec v with
@@ -348,7 +350,7 @@ let type_match ~default decd encd =
   | `End -> err_end (k_default codec k (loc d)) d
   in
   let encode codec v k e = let codec = encd v in codec.encode codec v k e in
-  { default; decode; encode }
+  { default = Lazy.from_val default; decode; encode }
 
 let decode_soup codec k d =
   let start = loc d in
@@ -385,7 +387,7 @@ let encode_soup codec soup k e =
 let soup =
   let decode = decode_soup in
   let encode = encode_soup in
-  { default = [(invalid_def `Null)]; decode; encode }
+  { default = Lazy.from_val [(invalid_def `Null)]; decode; encode }
 
 let some base =
   let decode codec k d = base.decode base (fun (loc, v) -> k (loc, Some v)) d in
@@ -393,7 +395,7 @@ let some base =
   | None -> invalid_arg err_some_combinator
   | Some v -> base.encode base v k e
   in
-  { default = None; decode; encode }
+  { default = Lazy.from_val None; decode; encode }
 
 (* JSON array codecs *)
 
@@ -418,7 +420,7 @@ let encode_array elt codec vs k e =
 let array elt =
   let decode codec k d = decode_array elt codec k d in
   let encode codec k e = encode_array elt codec k e in
-  { default = []; decode; encode }
+  { default = Lazy.from_val []; decode; encode }
 
 let array_array elt =
   let c = (fun v -> `Ok (Array.of_list v)), (fun v -> Array.to_list v) in
@@ -462,7 +464,9 @@ let mem_match ?eq ?opt objc mmatch name select =
   if objc.objc_id <>  mmatch.mem_oid
   then invalid_arg (err_mem_oid mmatch.mem_name) else
   let codec =
-    let default = (select mmatch.mem_codec.default).default in
+    let default =
+      lazy (Lazy.force (select (Lazy.force mmatch.mem_codec.default)).default)
+    in
     let decode codec k d =
       let ctx = match d.dec_ctx with [] -> assert false | ctx :: _ -> ctx in
       let v = snd (mmatch.mem_of_univ (Mmap.find mmatch.mem_id ctx.obj_mems)) in
@@ -495,7 +499,7 @@ let anon ?default objc anon_codec =
 let objc_default objc =
   let obj_mems =
     let add_mem _ (Me m) acc =
-      let v = m.mem_to_univ (invalid_def m.mem_codec.default) in
+      let v = m.mem_to_univ (invalid_def (Lazy.force (m.mem_codec.default))) in
       Mmap.add m.mem_id v acc
     in
     Smap.fold add_mem objc.objc_mems Mmap.empty
@@ -517,7 +521,7 @@ let objc_default objc =
 let rec decode_miss_mems objc loc miss o k d = match miss with
 | [] -> k o d
 | (n, Me m) :: miss ->
-    let v = m.mem_to_univ (invalid_def m.mem_codec.default) in
+    let v = m.mem_to_univ (invalid_def (Lazy.force m.mem_codec.default)) in
     let o = { o with obj_mems = Mmap.add m.mem_id v o.obj_mems } in
     match m.mem_opt with
     | `Yes | `Yes_rem _ -> decode_miss_mems objc loc miss o k d
@@ -634,7 +638,7 @@ let rec encode_mems memds mems k e = match memds with
     let v = try Mmap.find m.mem_id mems with Not_found -> assert false in
     let _, v = m.mem_of_univ v in
     match m.mem_opt with
-    | `Yes_rem eq when eq v m.mem_codec.default ->
+    | `Yes_rem eq when eq v (Lazy.force m.mem_codec.default) ->
         encode_mems memds mems k e
     | _ ->
         enc_next (`Lexeme (`Name n))
@@ -654,7 +658,7 @@ let obj objc =
   objc.objc_mem_list <- List.rev objc.objc_mem_list; (* dependency order. *)
   let decode codec k d = decode_obj objc codec k d in
   let encode codec k e = encode_obj objc codec k e in
-  { default = objc_default objc; decode; encode; }
+  { default = lazy (objc_default objc); decode; encode; }
 
 (* JSON object values *)
 
@@ -712,7 +716,7 @@ let memv m v = M (m, v)
 let anonv a n v = A (a, n, v)
 
 let new_obj d mems =
-  let o = d.default in
+  let o = Lazy.force d.default in
   let obj_mems, obj_anons =
     let add (mems, anons) = function
     | M (m, v) ->
