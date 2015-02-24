@@ -89,6 +89,9 @@ val default : 'a codec -> 'a
 val with_default : 'a -> 'a codec -> 'a codec
 (** [with_default v c] is [c] with default value [v]. *)
 
+val null : [`Null] codec
+(** [null] is the JSON null value. [`Null] is its default value. *)
+
 val bool : bool codec
 (** [bool] is a JSON boolean. [false] is its default value. *)
 

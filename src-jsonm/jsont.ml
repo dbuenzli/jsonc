@@ -262,6 +262,14 @@ let decode_err typ codec k d = match d.dec_lex with
 | `Lexeme l -> err_type (loc d) l typ (skip_value (k_default codec k)) d
 | `End -> err_end (k_default codec k (loc d)) d
 
+let null =
+  let decode codec k d = match d.dec_lex with
+  | `Lexeme `Null -> dec_next (k (loc d, `Null)) d
+  | _ -> decode_err "null" codec k d
+  in
+  let encode codec _ k e = enc_next (`Lexeme `Null) k e in
+  { default = Lazy.from_val `Null; decode; encode }
+
 let bool =
   let decode codec k d = match d.dec_lex with
   | `Lexeme (`Bool b) -> dec_next (k (loc d, b)) d

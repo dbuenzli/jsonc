@@ -62,7 +62,7 @@ let undef (_, v) = v
 
 (* JavaScript helpers *)
 
-let (null : < > Js.t) = Obj.magic Js.null
+let (null_obj : < > Js.t) = Obj.magic Js.null
 
 let is_array (o : < > Js.t) =
   (* FIXME IE >= 9 *)
@@ -247,7 +247,7 @@ let err_type o fnd exp k d =
   let fnd = match Js.to_string fnd with
   | "boolean" -> "bool" | "number" -> "float"
   | "object" as s ->
-      if o = null then "null" else
+      if o = null_obj then "null" else
       if is_array o then "array" else
       s
   | s -> s
@@ -301,6 +301,14 @@ let encoder_encoder e = e.enc
 
 let default d = Lazy.force d.default
 let with_default v d = { d with default = Lazy.from_val v }
+
+let null : [`Null] codec =
+  let decode codec o k d =
+    if o <> null_obj then err_type o (Js.typeof o) "null" (k_default codec k) d
+    else k `Null d
+  in
+  let encode codec o k e = k (Obj.magic (Js.null) : < > Js.t) e in
+  { default = Lazy.from_val `Null; decode; encode }
 
 let typ_boolean = Js.string "boolean"
 let bool : bool codec =
@@ -365,11 +373,11 @@ let string : string codec =
 
 let nullable base =
   let decode codec o k d =
-    if o = null then k None d else
+    if o = null_obj then k None d else
     base.decode base o (fun v -> k (Some v)) d
   in
   let encode codec v k e = match v with
-  | None -> k null e
+  | None -> k null_obj e
   | Some v -> base.encode base v k e
   in
   { default = lazy (Some (Lazy.force base.default)); decode; encode }
@@ -414,7 +422,7 @@ let type_match ~default decd encd =
     | `Ok vd -> vd.decode vd o k d
     | `Error e -> err_value_decoder e (k_default codec k) d
     in
-    if o = null then use `Null else
+    if o = null_obj then use `Null else
     let typ = Js.typeof o in
     if typ = typ_boolean then use `Bool else
     if typ = typ_number then use `Float else
@@ -428,7 +436,7 @@ let type_match ~default decd encd =
 let soup =
   let decode codec o k d = k o d in
   let encode codec v k e  = k v e in
-  { default = Lazy.from_val null; decode; encode }
+  { default = Lazy.from_val null_obj; decode; encode }
 
 let some base =
   let decode codec o k d = base.decode base o (fun v -> k (Some v)) d in
