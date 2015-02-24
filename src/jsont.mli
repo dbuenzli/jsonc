@@ -122,6 +122,13 @@ val view : ?default:'b -> ('a, 'b) value_codec -> 'a codec -> 'b codec
     @raise Invalid_argument if [default] is absent and [c]'s default value
     cannot be parsed by [view]. *)
 
+val enum : ?default:'a -> (string * 'a) list -> 'a codec
+(** [enum default enums] maps finite sets of JSON strings to values of
+     type ['a]. [default] defaults to the first element of the list.
+
+     {b Warning.} The type ['a] must be comparable with [Pervasives.compare]
+     @raise Invalid_argument if [enums] is empty. *)
+
 val type_match : default:'a ->
   ([ `Null | `Bool | `Float | `String | `Object | `Array ] ->
    [`Ok of 'a codec | `Error of string ]) ->

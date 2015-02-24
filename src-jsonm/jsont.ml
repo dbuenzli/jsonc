@@ -7,6 +7,7 @@
 let str = Printf.sprintf
 
 let err_conv_default msg = str "could not convert default value (%s)" msg
+let err_empty_enum = "enum list is empty"
 
 let err_objc_dup_mem k n =
   str "object codec %s: duplicate description for member %s" k n
@@ -335,6 +336,22 @@ let view ?default (vdec, venc) base =
   in
   let encode codec v k e = base.encode base (venc v) k e in
   { default; decode; encode }
+
+let enum ?default enums =
+  if enums = [] then invalid_arg err_empty_enum else
+  let default = match default with None -> snd (List.hd enums) | Some d -> d in
+  let rev_enums = List.map (fun (a, b) -> (b, a)) enums in
+  let dec s = try `Ok (List.assoc s enums) with
+  | Not_found ->
+      let alts = String.concat ", " (List.map fst enums) in
+      `Error (str "invalid enum: %s not one of %s" s alts)
+  in
+  let enc v = try List.assoc v rev_enums with
+  | Not_found ->
+      let alts = String.concat ", " (List.map snd rev_enums) in
+      invalid_arg (str "invalid enum: cannot encode value to one of %s" alts)
+  in
+  view ~default (dec, enc) string
 
 let type_match ~default decd encd =
   let decode codec k d = match d.dec_lex with

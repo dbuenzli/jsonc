@@ -257,15 +257,7 @@ let test_object_mems () =
 type tag = [ `Bool of bool | `Int of int ]
 let test_object_mem_match () =
   log_test "Object, matching members";
-  let err_tag t = Printf.sprintf "unknown tag: %s" t in
-  let tag =
-    let dec = function
-    | "bool" -> `Ok `Bool | "float" -> `Ok `Float
-    | t -> `Error (err_tag t)
-    in
-    let enc = function `Bool -> "bool" | `Float -> "float" in
-    Jsont.(view (dec, enc) (with_default "bool" string))
-  in
+  let tag = Jsont.enum ~default:`Bool ["bool", `Bool; "float", `Float] in
   let bool_tag =
     let dec = function b -> `Ok (`Bool b) in
     let enc = function `Bool b -> b | _ -> assert false in
@@ -302,18 +294,12 @@ let test_object_mem_match () =
                       (trip "{ \"data\" : 2.0, \"tag\" : \"float\" }"))
     (`Float 2.0);
   is_equal pp_data (Jsont.get mem_data
-                      (err (`Value_decoder (err_tag "bla"))
+                      (err (`Value_decoder
+                              "invalid enum: bla not one of bool, float")
                          "{ \"data\" : true, \"tag\" : \"bla\" }"))
     (`Bool true);
   let objc = Jsont.objc ~kind:"test2" () in
-  let tag =
-    let dec = function
-    | "bool" -> `Ok `Bool | "test" -> `Ok `Test
-    | t -> `Error (err_tag t)
-    in
-    let enc = function `Bool -> "bool" | `Test -> "test" in
-    Jsont.(view (dec, enc) (with_default "bool" string))
-  in
+  let tag = Jsont.enum ~default:`Bool ["bool", `Bool; "test", `Test] in
   let bool_tag =
     let dec = function b -> `Ok (`Bool b) in
     let enc = function `Bool b -> b | _ -> assert false in
