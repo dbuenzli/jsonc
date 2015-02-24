@@ -150,6 +150,15 @@ val type_match : default:'a ->
 val soup : soup codec
 (** [soup] is any JSON value. JSON's null is its default value. *)
 
+type json =
+  [ `Null | `Bool of bool | `Float of float | `String of nat_string
+  | `A of json list | `O of (nat_string * json) list ]
+(** The type generic JSON text representations. *)
+
+val json : json codec
+(** [json] is any JSON value using a generic JSON text representation.
+    [`Null] it its default value. *)
+
 val some : 'a codec -> 'a option codec
 (** [some c] is the JSON value [c] but wrapped by [Some]. Its
     default value is [None].

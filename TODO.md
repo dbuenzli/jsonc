@@ -3,3 +3,6 @@
 * Finish documentation. Basics, etc.
 * Fixed point combinator for recursive object ?
 * Grep TODO/FIXME
+* Implement Jsont.json in jsoo backend.
+* Add Jsont.fold_anons
+

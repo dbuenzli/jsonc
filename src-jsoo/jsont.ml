@@ -438,6 +438,15 @@ let soup =
   let encode codec v k e  = k v e in
   { default = Lazy.from_val null_obj; decode; encode }
 
+type json =
+  [ `Null | `Bool of bool | `Float of float | `String of nat_string
+  | `A of json list | `O of (nat_string * json) list ]
+
+let json =
+  let decode codec o k d = failwith "TODO" in
+  let encode codec v k e = failwith "TODO" in
+  { default = Lazy.from_val `Null; decode; encode }
+
 let some base =
   let decode codec o k d = base.decode base o (fun v -> k (Some v)) d in
   let encode codec v k e = match v with

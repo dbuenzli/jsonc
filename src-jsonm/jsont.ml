@@ -417,6 +417,50 @@ let soup =
   let encode = encode_soup in
   { default = Lazy.from_val [(invalid_def `Null)]; decode; encode }
 
+type json =
+  [ `Null | `Bool of bool | `Float of float | `String of nat_string
+  | `A of json list | `O of (nat_string * json) list ]
+
+let decode_json codec k d =
+  let start = loc d in
+  let rec value k d = match d.dec_lex with
+  | (`Lexeme `Os) -> dec_next (obj [] k) d
+  | (`Lexeme `As) -> dec_next (arr [] k) d
+  | (`Lexeme (`Null | `Bool _ | `String _ | `Float _ as v)) ->
+      dec_next (k (loc_merge start (loc d), v)) d
+  | _ -> decode_err "value" codec k d
+  and arr vs k d = match d.dec_lex with
+  | (`Lexeme `Ae) ->
+      dec_next (k (loc_merge start (loc d), `A (List.rev vs))) d
+  | v -> value (fun (_, v) -> arr (v :: vs) k) d
+  and obj ms k d = match d.dec_lex with
+  | (`Lexeme `Oe) ->
+      dec_next (k (loc_merge start (loc d), (`O (List.rev ms)))) d
+  | (`Lexeme (`Name n)) ->
+      dec_next (value (fun (_, v) -> obj ((n, v) :: ms) k)) d
+  | _ -> decode_err "member or end of object" codec k d
+  in
+  value k d
+
+let encode_json codec v k e =
+  let rec value v k e = match v with
+  | `A vs -> enc_next (`Lexeme `As) (arr vs k) e
+  | `O ms -> enc_next (`Lexeme `Os) (obj ms k) e
+  | `Null | `Bool _ | `Float _ | `String _ as v -> enc_next (`Lexeme v) k e
+  and arr vs k e = match vs with
+  | v :: vs -> value v (arr vs k) e
+  | [] -> enc_next (`Lexeme `Ae) k e
+  and obj ms k e = match ms with
+  | (n, v) :: ms -> enc_next (`Lexeme (`Name n)) (value v (obj ms k)) e
+  | [] -> enc_next (`Lexeme `Oe) k e
+  in
+  value v k e
+
+let json =
+  let decode = decode_json in
+  let encode = encode_json in
+  { default = Lazy.from_val `Null; decode; encode }
+
 let some base =
   let decode codec k d = base.decode base (fun (loc, v) -> k (loc, Some v)) d in
   let encode codec v k e = match v with

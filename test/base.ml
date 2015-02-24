@@ -153,6 +153,26 @@ let test_type_match () =
   is_equal pp_tag (trip "[]") (`Array []);
   ()
 
+let test_json () =
+  log_test "Jsont.json";
+  let pp_json ppf v = pp ppf "TODO" in
+  let codec = Jsont.json in
+  let trip = ok_trip codec in
+  let s = Jsont.nat_string_of_string in
+(*  let err = err_trip codec in *)
+  is_equal pp_json (trip "null") (`Null);
+  is_equal pp_json (trip "true") (`Bool true);
+  is_equal pp_json (trip "2.0") (`Float 2.0);
+  is_equal pp_json (trip "\"\"") (`String (s ""));
+  is_equal pp_json (trip "\"aaa\"") (`String (s "aaa"));
+  is_equal pp_json (trip "[]") (`A []);
+  is_equal pp_json (trip "{}") (`O []);
+  is_equal pp_json (trip "{ \"a\" : [true,2.0], \"b\": 1.0, \"c\": {}}")
+    (`O [(s "a"), `A [`Bool true; `Float 2.0];
+         (s "b"), `Float 1.0;
+         (s "c"), `O []]);
+  ()
+
 let test_array () =
   log_test "Jsont.array";
   let codec = Jsont.(array bool) in
@@ -362,6 +382,7 @@ let test () =
   test_nullable ();
   test_view ();
   test_type_match ();
+  test_json ();
   test_array ();
   test_object_empty ();
   test_object_anons ();
