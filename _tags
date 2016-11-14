@@ -4,8 +4,7 @@
 #<{src,test}-jsonm> : include
 
 <{src,test}-jsonm/*> : package(jsonm)
-<{src,test}-jsoo/*> : package(js_of_ocaml), syntax(camlp4o), \
-               package(js_of_ocaml.syntax)
+<{src,test}-jsoo/*> : package(js_of_ocaml), package(js_of_ocaml.ppx)
 
 #<test-jsonm> : include
 #<test-jsoo> : include

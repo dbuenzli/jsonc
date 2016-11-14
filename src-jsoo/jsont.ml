@@ -66,16 +66,16 @@ let (null_obj : < > Js.t) = Obj.magic Js.null
 
 let is_array (o : < > Js.t) =
   (* FIXME IE >= 9 *)
-  Js.to_bool ((Js.Unsafe.variable "Array") ## isArray (o))
+  Js.to_bool ((Js.Unsafe.variable "Array") ## (isArray o))
 
 let jobj_keys (o : < > Js.t) : Js.js_string Js.t Js.js_array Js.t =
   (* FIXME IE >= 9 *)
-  (Js.Unsafe.variable "Object") ## keys (o)
+  (Js.Unsafe.variable "Object") ## (keys o)
 
 let jobj_raw_copy (o : < > Js.t) : < > Js.t = (* assumes no prototype tricks *)
   let keys = jobj_keys o in
   let newobj = Js.Unsafe.obj [||] in
-  for i = 0 to (keys ## length) - 1 do
+  for i = 0 to (keys ##. length) - 1 do
     let (key : Js.js_string Js.t) =  Obj.magic (Js.array_get keys i) in
     Js.Unsafe.set newobj key (Js.Unsafe.get o key);
   done;
@@ -161,7 +161,7 @@ let obj_fold_anons f acc o =
     let (key : Js.js_string Js.t) = Obj.magic (Js.array_get keys i) in
     loop (f acc key (Js.Unsafe.get anons key)) max (i + 1)
   in
-  loop acc (keys ## length - 1) 0
+  loop acc (keys ##. length - 1) 0
 
 let obj_copy o =
   let copy = obj_empty (obj_get_oid o) in
@@ -270,7 +270,7 @@ let finish v d =
 let decoder ?(loc = false) ?(dups = `Skip) ?(unknown = `Skip) dec codec =
   let dec_k d =
     try
-      let obj = Js._JSON ## parse (Jsont_codec.decoder_src d.dec) in
+      let obj = Js._JSON ## (parse (Jsont_codec.decoder_src d.dec)) in
       codec.decode codec obj finish d
     with Js.Error e -> err_json_decoder e (k_default codec finish) d
   in
@@ -286,7 +286,7 @@ let enc_partial k e = e.enc_k <- k; `Partial
 let enc_next v k e = k v e
 
 let finish o e =
-  Jsont_codec.encoder_set_dst e.enc (Js._JSON ## stringify (o));
+  Jsont_codec.encoder_set_dst e.enc (Js._JSON ## (stringify o));
   e.enc_k <- (fun _ -> `Ok);
  `Ok
 
@@ -467,7 +467,7 @@ let decode_array elt codec o k d =
   then err_type o (Js.typeof o) "array" (k_default codec k) d
   else
   let (a : < > Js.t Js.js_array Js.t) = Js.Unsafe.coerce o in
-  loop [] a (a ## length - 1) 0 k d
+  loop [] a (a ##. length - 1) 0 k d
 
 let encode_array elt codec vs k e  =
   let rec loop elt vs result i k e = match vs with
@@ -612,7 +612,7 @@ let decode_obj objc codec o k d =
       let (n : Js.js_string Js.t) = Obj.magic (Js.array_get keys i) in
       loop ((Js.to_string n, n) :: acc) max (i + 1)
     in
-    loop [] (keys ## length - 1) 0
+    loop [] (keys ##. length - 1) 0
   in
   let result = obj_empty objc.objc_id in
   let pop k result d = d.dec_ctx <- List.tl d.dec_ctx; k result d in
@@ -632,7 +632,7 @@ let encode_anons objc o k result e =
         a.anon_codec.encode a.anon_codec (obj_get_anon o name) set e
   in
   let names = obj_anon_keys o in
-  loop names (names ## length - 1) 0 result k e
+  loop names (names ##. length - 1) 0 result k e
 
 let encode_mems objc o result k e =
   let rec loop names result k e = match names with
