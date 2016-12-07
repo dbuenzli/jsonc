@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2014 Daniel C. Bünzli. All rights reserved.
-   Distributed under the BSD3 license, see license at the end of the file.
-   %%NAME%% release %%VERSION%%
+   Distributed under the ISC license, see terms at the end of the file.
+   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 (* A few notes.
@@ -85,8 +85,8 @@ let jobj_raw_copy (o : < > Js.t) : < > Js.t = (* assumes no prototype tricks *)
 
 type nat_string = Js.js_string Js.t
 
-let nat_string_of_string = Jsont_codec.nat_string_of_string
-let nat_string_to_string = Jsont_codec.nat_string_to_string
+let nat_string_of_string = Jsonc_codec.nat_string_of_string
+let nat_string_to_string = Jsonc_codec.nat_string_to_string
 
 type soup = < > Js.t
 
@@ -174,7 +174,7 @@ let obj_copy o =
 (* JSON codecs and value codec types *)
 
 type error =
-  [ `Json_decoder of Jsont_codec.error
+  [ `Json_decoder of Jsonc_codec.error
   | `Type of string * string
   | `Value_decoder of string
   | `Member of string * string * [ `Dup | `Miss | `Unknown ] ]
@@ -195,13 +195,13 @@ type 'a decoder =
   { dec_loc : bool;      (* [true] if location should be computed (unused). *)
     dec_dups : [ `Skip | `Error ];    (* behaviour on dup members (unused). *)
     dec_unknown : [ `Skip | `Error ];       (* behaviour on unknown member. *)
-    dec : Jsont_codec.decoder;                          (* backend decoder. *)
+    dec : Jsonc_codec.decoder;                          (* backend decoder. *)
     mutable dec_ctx : obj list;          (* currently decoded object stack. *)
     mutable dec_k : 'a decoder -> 'a decode }      (* decoder kontinuation. *)
 
 type encode = [ `Partial | `Ok ]
 and encoder =
-  { enc : Jsont_codec.encoder;                          (* backend encoder. *)
+  { enc : Jsonc_codec.encoder;                          (* backend encoder. *)
     mutable enc_ctx : obj list;          (* currently encoded object stack. *)
     mutable enc_k : encoder -> encode }           (* encoding kontinuation. *)
 
@@ -270,7 +270,7 @@ let finish v d =
 let decoder ?(loc = false) ?(dups = `Skip) ?(unknown = `Skip) dec codec =
   let dec_k d =
     try
-      let obj = Js._JSON ## (parse (Jsont_codec.decoder_src d.dec)) in
+      let obj = Js._JSON ## (parse (Jsonc_codec.decoder_src d.dec)) in
       codec.decode codec obj finish d
     with Js.Error e -> err_json_decoder e (k_default codec finish) d
   in
@@ -286,7 +286,7 @@ let enc_partial k e = e.enc_k <- k; `Partial
 let enc_next v k e = k v e
 
 let finish o e =
-  Jsont_codec.encoder_set_dst e.enc (Js._JSON ## (stringify o));
+  Jsonc_codec.encoder_set_dst e.enc (Js._JSON ## (stringify o));
   e.enc_k <- (fun _ -> `Ok);
  `Ok
 
@@ -353,7 +353,7 @@ let int_strict : int codec =
 
 let typ_string = Js.string "string"
 let nat_string_empty = Js.string ""
-let nat_string : Jsont_codec.nat_string codec =
+let nat_string : Jsonc_codec.nat_string codec =
   let decode codec o k d =
     let typ = Js.typeof o in
     if typ <> typ_string then err_type o typ "string" (k_default codec k) d else
@@ -718,34 +718,17 @@ let new_obj d mems =
   o
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2014 Daniel C. Bünzli.
-   All rights reserved.
+   Copyright (c) 2014 Daniel C. Bünzli
 
-   Redistribution and use in source and binary forms, with or without
-   modification, are permitted provided that the following conditions
-   are met:
+   Permission to use, copy, modify, and/or distribute this software for any
+   purpose with or without fee is hereby granted, provided that the above
+   copyright notice and this permission notice appear in all copies.
 
-   1. Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-   2. Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-
-   3. Neither the name of Daniel C. Bünzli nor the names of
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
-   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
   ---------------------------------------------------------------------------*)

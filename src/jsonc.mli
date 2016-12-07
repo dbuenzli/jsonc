@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2014 Daniel C. Bünzli. All rights reserved.
-   Distributed under the BSD3 license, see license at the end of the file.
-   %%NAME%% release %%VERSION%%
+   Distributed under the ISC license, see terms at the end of the file.
+   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 (** JSON data structure codecs.
@@ -54,7 +54,7 @@ val undef : 'a def -> 'a
 
 (** {1:json_values JSON values} *)
 
-type nat_string = Jsont_codec.nat_string
+type nat_string = Jsonc_codec.nat_string
 (** The type for native strings. *)
 
 val nat_string_of_string : string -> nat_string
@@ -63,7 +63,7 @@ val nat_string_of_string : string -> nat_string
 val nat_string_to_string : nat_string -> string
 (** [nat_string_to_string s] is an OCaml string from the native string [s]. *)
 
-type soup = Jsont_codec.soup
+type soup = Jsonc_codec.soup
 (** The type for arbitrary undescribed JSON values. *)
 
 type obj
@@ -143,7 +143,7 @@ val type_match : default:'a ->
        data type the error will be returned by the decoder.
        If [`Ok d] is, [d] is used to decode the value. You
        must make sure that [d] does actually describe the given datatype
-       (i.e. it would be wrong to return {!Jsont.int} on [`Bool]).}
+       (i.e. it would be wrong to return {!Jsonc.int} on [`Bool]).}
     {- On encoding: [enc v] where [v] is the member value.}}
     [default] is its default value. *)
 
@@ -251,7 +251,7 @@ val obj : ?seal:bool -> objc -> obj codec
     be used with the combinators in the definition of other codecs and
     it's still possible to modify [o]. However [Invalid_argument] is
     raised if the codec is used to codec data or if it's default value
-    accessed with {!Jsont.default} (either directly or indirectly
+    accessed with {!Jsonc.default} (either directly or indirectly
     through the default value of a codec that depends on it). It will
     be usable once [o] has been seal by calling [obj] again on [o]
     with [seal:true] (the resulting codec can be ignored). *)
@@ -319,7 +319,7 @@ val get_anon_def : 'a anon -> string -> obj -> 'a def
 (** {1:dec JSON decode} *)
 
 type error =
-  [ `Json_decoder of Jsont_codec.error
+  [ `Json_decoder of Jsonc_codec.error
   | `Type of string * string
   | `Value_decoder of string
   | `Member of string * string * [ `Dup | `Miss | `Unknown ] ]
@@ -332,7 +332,7 @@ type 'a decoder
 (** The type for decoders. The type ['a] is the resulting OCaml type decoded. *)
 
 val decoder : ?loc:bool -> ?dups:[`Skip | `Error] ->
-  ?unknown:[`Skip | `Error] -> Jsont_codec.decoder -> 'a codec -> 'a decoder
+  ?unknown:[`Skip | `Error] -> Jsonc_codec.decoder -> 'a codec -> 'a decoder
 (** [decoder unsafe loc mem_dups d v] is a decoder for a value described
     [v] using the backend decoder [d]. The following optional may not
     be available in all backends:
@@ -358,7 +358,7 @@ val decode : 'a decoder -> [ `Await | `Error of error def | `Ok of 'a def]
     in case of errors. In the worst case the returned value with be
     the decoder's default value. *)
 
-val decoder_decoder : 'a decoder -> Jsont_codec.decoder
+val decoder_decoder : 'a decoder -> Jsonc_codec.decoder
 (** [decoder_decoder d] is [d]'s backend decoder. *)
 
 (** {1:enc JSON encode} *)
@@ -366,7 +366,7 @@ val decoder_decoder : 'a decoder -> Jsont_codec.decoder
 type encoder
 (** The type for encoders. *)
 
-val encoder : Jsont_codec.encoder -> 'a codec -> 'a -> encoder
+val encoder : Jsonc_codec.encoder -> 'a codec -> 'a -> encoder
 (** [encoder e c v] is an encoder that encodes [v] as described by
     [c] using the native encoder [e]. *)
 
@@ -379,7 +379,7 @@ val encode : encoder -> [ `Partial | `Ok ]
 
     {b Note.} You should always call the function until [`Ok] is returned. *)
 
-val encoder_encoder : encoder -> Jsont_codec.encoder
+val encoder_encoder : encoder -> Jsonc_codec.encoder
 (** [encoder_encoder e] is [e]'s backend encoder. *)
 
 (** {1:basics Basics} *)
@@ -392,7 +392,7 @@ val encoder_encoder : encoder -> Jsont_codec.encoder
    back. Use {!anon} with {!soup}}
 {- For handling unreasonable object schemes with conditional and
    optional members get all members as optional and sort out the logic
-   through a {!Jsont.codec}.}} *)
+   through a {!Jsonc.codec}.}} *)
 
 (** {1:limits Limitations} *)
 
@@ -402,34 +402,17 @@ val encoder_encoder : encoder -> Jsont_codec.encoder
 
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2014 Daniel C. Bünzli.
-   All rights reserved.
+   Copyright (c) 2014 Daniel C. Bünzli
 
-   Redistribution and use in source and binary forms, with or without
-   modification, are permitted provided that the following conditions
-   are met:
+   Permission to use, copy, modify, and/or distribute this software for any
+   purpose with or without fee is hereby granted, provided that the above
+   copyright notice and this permission notice appear in all copies.
 
-   1. Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-   2. Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-
-   3. Neither the name of Daniel C. Bünzli nor the names of
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
-   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
   ---------------------------------------------------------------------------*)

@@ -4,31 +4,34 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-(* We test directly with the non-blocking codec 1 byte per byte to make
-   sure we have that right. *)
+(** {!Jsont}'s {!Jsonm} backend.
 
-let decoder data =
-  let d = Jsonm.decoder `Manual in
-  let max = String.length data - 1 in
-  let pos = ref (-1) in
-  let refill () =
-    incr pos;
-    if !pos > max then Jsonm.Manual.src d data 0 0 else
-    Jsonm.Manual.src d data !pos 1;
-  in
-  d, refill
+    This backend uses {!Jsonm} as a codec. *)
 
-let encoder () =
-  let e = Jsonm.encoder `Manual in
-  let res = Buffer.create 255 in
-  let buf = " " in
-  let flush () =
-    Buffer.add_substring res buf 0 (1 - (Jsonm.Manual.dst_rem e));
-    Jsonm.Manual.dst e buf 0 1
-  in
-  let get_data _ = Buffer.contents res in
-  Jsonm.Manual.dst e buf 0 1;
-  e, flush, get_data
+(** {1 JSON Values} *)
+
+type loc = (int * int) * (int * int)
+(** The type for value location ranges. See {!Jsont.loc}. *)
+
+type 'a def = loc * 'a
+(** The type for values tagged with a location. *)
+
+type nat_string = string
+(** The type for native strings. *)
+
+type soup = Jsonm.lexeme def list
+(** The type for arbitrary undescribed JSON values. *)
+
+(** {1 JSON codec} *)
+
+type error = Jsonm.error
+(** The type for decode errors. *)
+
+type decoder = Jsonm.decoder
+(** The type for decoders. *)
+
+type encoder = Jsonm.encoder
+(** The type for encoders. *)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2014 Daniel C. Bünzli

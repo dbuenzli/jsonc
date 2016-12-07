@@ -1,12 +1,10 @@
-<**/*.{ml,mli}> : bin_annot, annot, debug
+<**/*.{ml,mli}> : bin_annot
 
-#<{src,test}-jsoo> : include
-#<{src,test}-jsonm> : include
+<src> : include
+<src-{jsonm,jsoo}> : include
 
 <{src,test}-jsonm/*> : package(jsonm)
 <{src,test}-jsoo/*> : package(js_of_ocaml), package(js_of_ocaml.ppx)
 
-#<test-jsonm> : include
-#<test-jsoo> : include
-<test-jsonm/*> : jsont_jsonm
-<test-jsoo/*> : jsont_jsoo
+<test-jsonm/*> : jsonc_jsonm
+<test-jsoo/*> : jsonc_jsoo

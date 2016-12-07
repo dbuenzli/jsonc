@@ -17,11 +17,11 @@ action ()
       api-doc)      shift; export OCAMLBUILD;
                     pkg-doc $* -I src-jsonm -I src-jsoo doc/api.docdir ;;
       jsonm)        $OCAMLBUILD -I src-jsonm \
-                                jsont_jsonm.cma jsont_jsonm.cmxa
+                                jsonc_jsonm.cma jsonc_jsonm.cmxa
                     ;;
       jsoo)
                     $OCAMLBUILD -I src-jsoo \
-                                jsont_jsoo.cma jsont_jsoo.cmxa
+                                jsonc_jsoo.cma jsonc_jsoo.cmxa
                     ;;
       test-jsonm)   $OCAMLBUILD -I src-jsonm -I test-jsonm \
                                 test-jsonm.otarget
@@ -32,7 +32,7 @@ action ()
 
       browser)      action test-jsoo
                     shift
-                    reload-browser "http://`hostname`/jsont/test-jsoo/$1.html"
+                    reload-browser "http://`hostname`/jsonc/test-jsoo/$1.html"
                     ;;
       clean)        $OCAMLBUILD -clean ;;
       *)            $OCAMLBUILD $* ;;

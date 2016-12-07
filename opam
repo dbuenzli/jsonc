@@ -1,20 +1,26 @@
 opam-version: "1.2"
 maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
 authors: ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
-homepage: "http://erratique.ch/software/jsont"
-doc: "http://erratique.ch/software/jsont"
-dev-repo: "http://erratique.ch/repos/jsont.git"
-bug-reports: "https://github.com/dbuenzli/jsont/issues"
+homepage: "http://erratique.ch/software/jsonc"
+doc: "http://erratique.ch/software/jsonc"
+dev-repo: "http://erratique.ch/repos/jsonc.git"
+bug-reports: "https://github.com/dbuenzli/jsonc/issues"
 tags: [ "json" "codec" "javascript" "schema" "org:erratique" ]
-license: "BSD3"
+license: "ISC"
 available: [ ocaml-version >= "4.01.0"]
-depends: [ "ocamlfind" ]
-depopts: [ "jsonm" "js_of_ocaml" ]
-build: 
-[
-  [ "ocaml" "pkg/git.ml" ]
-  [ "ocaml" "pkg/build.ml" "native=%{ocaml-native}%"
-                           "native-dynlink=%{ocaml-native-dynlink}%"
-                           "jsonm=%{jsonm:installed}%"
-                           "jsoo=%{js_of_ocaml:installed}%" ]
+depends: [
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "topkg" {build}
 ]
+depopts: [
+ "jsonm"
+ "js_of_ocaml"
+]
+conflicts: [ "jsonm" {< "1.0.0"} ]
+build: [[
+ "ocaml" "pkg/pkg.ml" "build"
+         "--pinned" "%{pinned}%"
+         "--with-jsonm" "%{jsonm:installed}%"
+         "--with-js_of_ocaml" "%{js_of_ocaml:installed}%"
+]]

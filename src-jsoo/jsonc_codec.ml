@@ -4,31 +4,29 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-(* We test directly with the non-blocking codec 1 byte per byte to make
-   sure we have that right. *)
+(* JSON values *)
 
-let decoder data =
-  let d = Jsonm.decoder `Manual in
-  let max = String.length data - 1 in
-  let pos = ref (-1) in
-  let refill () =
-    incr pos;
-    if !pos > max then Jsonm.Manual.src d data 0 0 else
-    Jsonm.Manual.src d data !pos 1;
-  in
-  d, refill
+type nat_string = Js.js_string Js.t
+let nat_string_of_string s = Js.string s
+let nat_string_to_string s = Js.to_string s
 
-let encoder () =
-  let e = Jsonm.encoder `Manual in
-  let res = Buffer.create 255 in
-  let buf = " " in
-  let flush () =
-    Buffer.add_substring res buf 0 (1 - (Jsonm.Manual.dst_rem e));
-    Jsonm.Manual.dst e buf 0 1
-  in
-  let get_data _ = Buffer.contents res in
-  Jsonm.Manual.dst e buf 0 1;
-  e, flush, get_data
+type soup = < > Js.t
+
+(* JSON decode *)
+
+type error = string
+type src = Js.js_string Js.t
+type decoder = Js.js_string Js.t
+let decoder s = s
+let decoder_src s = s
+
+(* JSON encode *)
+
+type dst = Js.js_string Js.t
+type encoder = dst ref
+let encoder () = ref (Js.string "")
+let encoder_set_dst e dst = e := dst
+let encoder_dst enc = !enc
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2014 Daniel C. Bünzli

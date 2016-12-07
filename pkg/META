@@ -1,28 +1,29 @@
-description = "JSON data structure codecs"
+description = "JSON data structure codecs for OCaml"
 version = "%%VERSION%%"
+requires = ""
 
 # Backends
 
 package "jsonm" (
   directory="jsonm"
-  description = "JSON data structure codecs with Jsonm"
+  description = "jsonc's Jsonm backend"
   version = "%%VERSION%%"
   requires = "jsonm"
-  archive(byte) = "jsont_jsonm.cma"
-  archive(byte, plugin) = "jsont_jsonm.cma"
-  archive(native) = "jsont_jsonm.cmxa"
-  archive(native, plugin) = "jsont_jsonm.cmxs"
-  exists_if = "jsont_jsonm.cma"
+  archive(byte) = "jsonc_jsonm.cma"
+  archive(native) = "jsonc_jsonm.cmxa"
+  plugin(byte) = "jsonc_jsonm.cma"
+  plugin(native) = "jsonc_jsonm.cmxs"
+  exists_if = "jsonc_jsonm.cma"
 )
 
 package "jsoo" (
   directory="jsoo"
-  description = "JSON data structure codecs with js_of_ocaml"
+  description = "jsonc's js_of_ocaml backend"
   version = "%%VERSION%%"
   requires = "js_of_ocaml"
-  archive(byte) = "jsont_jsoo.cma"
-  archive(byte, plugin) = "jsont_jsoo.cma"
-  archive(native) = "jsont_jsoo.cmxa"
-  archive(native, plugin) = "jsont_jsoo.cmxs"
-  exists_if = "jsont_jsoo.cma"
+  archive(byte) = "jsonc_jsoo.cma"
+  archive(native) = "jsonc_jsoo.cmxa"
+  plugin(native) = "jsonc_jsoo.cmxs"
+  plugin(byte) = "jsonc_jsoo.cma"
+  exists_if = "jsonc_jsoo.cma"
 )

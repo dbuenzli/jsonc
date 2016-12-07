@@ -4,31 +4,52 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-(* We test directly with the non-blocking codec 1 byte per byte to make
-   sure we have that right. *)
+(** {!Jsont}'s [js_of_ocaml] backend.
 
-let decoder data =
-  let d = Jsonm.decoder `Manual in
-  let max = String.length data - 1 in
-  let pos = ref (-1) in
-  let refill () =
-    incr pos;
-    if !pos > max then Jsonm.Manual.src d data 0 0 else
-    Jsonm.Manual.src d data !pos 1;
-  in
-  d, refill
+    This backend uses the browser's JavaScript
+    [JSON.{parse,stringify}] functions as a codec.
 
-let encoder () =
-  let e = Jsonm.encoder `Manual in
-  let res = Buffer.create 255 in
-  let buf = " " in
-  let flush () =
-    Buffer.add_substring res buf 0 (1 - (Jsonm.Manual.dst_rem e));
-    Jsonm.Manual.dst e buf 0 1
-  in
-  let get_data _ = Buffer.contents res in
-  Jsonm.Manual.dst e buf 0 1;
-  e, flush, get_data
+    {b Limitations.} The [loc] and [mem_dups]
+    argument of {!Jsont.decoder} are unsupported. *)
+
+(** {1 JSON values} *)
+
+type nat_string = Js.js_string Js.t
+(** The type for native strings. *)
+
+type soup
+(** The type for arbitrary undescribed JSON values *)
+
+(** {1 JSON decode} *)
+
+type error = string
+(** The type for decode errors. *)
+
+type src = Js.js_string Js.t
+(** The type for decoding sources. *)
+
+type decoder
+(** The type for decoder. *)
+
+val decoder : src -> decoder
+(** [decoder src] is a decoder that reads from [src]. *)
+
+val decoder_src : decoder -> src
+(** [decoder_src d] is [d]'s source. *)
+
+(** {1 JSON encode} *)
+
+type dst = Js.js_string Js.t
+(** The type for encoding destinations. *)
+
+type encoder
+(** The type for encoders. *)
+
+val encoder : unit -> encoder
+(** [encoder ()] is a new encoder. *)
+
+val encoder_dst : encoder -> dst
+(** [encoder_dst e] is the result of the {!Jsont.encode}ing process. *)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2014 Daniel C. Bünzli

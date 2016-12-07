@@ -4,31 +4,22 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-(* We test directly with the non-blocking codec 1 byte per byte to make
-   sure we have that right. *)
+(* JSON values *)
 
-let decoder data =
-  let d = Jsonm.decoder `Manual in
-  let max = String.length data - 1 in
-  let pos = ref (-1) in
-  let refill () =
-    incr pos;
-    if !pos > max then Jsonm.Manual.src d data 0 0 else
-    Jsonm.Manual.src d data !pos 1;
-  in
-  d, refill
+type loc = (int * int) * (int * int)
+type 'a def = loc * 'a
 
-let encoder () =
-  let e = Jsonm.encoder `Manual in
-  let res = Buffer.create 255 in
-  let buf = " " in
-  let flush () =
-    Buffer.add_substring res buf 0 (1 - (Jsonm.Manual.dst_rem e));
-    Jsonm.Manual.dst e buf 0 1
-  in
-  let get_data _ = Buffer.contents res in
-  Jsonm.Manual.dst e buf 0 1;
-  e, flush, get_data
+type nat_string = string
+val nat_string_of_string : string -> nat_string
+val nat_string_to_string : nat_string -> string
+
+type soup = Jsonm.lexeme def list
+
+(* JSON codec *)
+
+type error = Jsonm.error
+type decoder = Jsonm.decoder
+type encoder = Jsonm.encoder
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2014 Daniel C. Bünzli

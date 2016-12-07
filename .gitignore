@@ -3,8 +3,8 @@ _build
 *.native
 *.js
 *.html
+*.install
 tmp
 *~
 \.\#*
 \#*#
-CLOCK.org
