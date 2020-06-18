@@ -26,7 +26,7 @@ Jsonc can be installed with `opam`:
 
     opam install jsonm jsonc             # jsonm backend
     opam install js_of_ocaml jsonc       # js_of_ocaml backend
-    opam isntall jsonm js_of_ocaml jsonc # all backends
+    opam install jsonm js_of_ocaml jsonc # all backends
 
 If you don't use `opam` consult the [`opam`](opam) file for build
 instructions.

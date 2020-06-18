@@ -115,7 +115,7 @@ val nat_string : nat_string codec
     value. *)
 
 val nullable : 'a codec -> 'a option codec
-(** [nullable c] is either the JSON value [c] or JSON null. [Some (default d)]
+(** [nullable c] is either the JSON value [c] or JSON null. [Some (default c)]
     is its default value. *)
 
 val view : ?default:'b -> ('a, 'b) value_codec -> 'a codec -> 'b codec
@@ -157,7 +157,7 @@ type json =
 
 val json : json codec
 (** [json] is any JSON value using a generic JSON text representation.
-    [`Null] it its default value. *)
+    [`Null] is its default value. *)
 
 val some : 'a codec -> 'a option codec
 (** [some c] is the JSON value [c] but wrapped by [Some]. Its
